@@ -6,28 +6,17 @@
     --foreground: 0 0% 98%;
     --card: 240 10% 6.5%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 6.5%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 263.4 70% 58%;
+    --primary: 185 100% 50%;
     --primary-foreground: 210 20% 98%;
-    --secondary: 240 5.9% 10%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 217.2 91.2% 59.8%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 263.4 70% 58%;
+    --secondary: 270 100% 50%;
+    --accent: 150 100% 50%;
     --radius: 0.75rem;
   }
 }
 
 body {
-  background-color: #06060A;
-  color: #F3F4F6;
+  background-color: #0A0A0B;
+  color: #E5E2E3;
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
 }
@@ -43,46 +32,50 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(124, 58, 237, 0.3);
+  background: rgba(0, 242, 255, 0.3);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 58, 237, 0.6);
+  background: rgba(0, 242, 255, 0.6);
 }
 
-/* Glassmorphism utility */
+/* Stitch Glassmorphism utility */
 .glass-panel {
-  background: rgba(15, 15, 24, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
 
 .glass-panel-interactive {
-  background: rgba(18, 18, 28, 0.7);
-  backdrop-filter: blur(16px);
+  background: rgba(20, 20, 30, 0.7);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.09);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-panel-interactive:hover {
-  border-color: rgba(147, 51, 234, 0.4);
+  border-color: rgba(0, 242, 255, 0.4);
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px -10px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 0 25px rgba(0, 242, 255, 0.2);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 25px rgba(0, 242, 255, 0.25);
 }
 
 .glow-purple {
-  box-shadow: 0 0 40px -10px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 0 25px rgba(143, 0, 255, 0.25);
 }
 
-.glow-blue {
-  box-shadow: 0 0 40px -10px rgba(37, 99, 235, 0.4);
+.glow-emerald {
+  box-shadow: 0 0 20px rgba(0, 250, 145, 0.3);
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #C084FC 0%, #60A5FA 50%, #34D399 100%);
+  background: linear-gradient(135deg, #00F2FF 0%, #dab9ff 50%, #00FA91 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -90,7 +83,7 @@ body {
 .gradient-border {
   position: relative;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.5), rgba(37, 99, 235, 0.5));
+  background: linear-gradient(135deg, rgba(0, 242, 255, 0.5), rgba(143, 0, 255, 0.5));
   padding: 1px;
 }
 
@@ -100,8 +93,8 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.03); }
 }
 
 .animate-pulse-glow {
