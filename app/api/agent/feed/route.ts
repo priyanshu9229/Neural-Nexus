@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPersonaFromDB, getPostsFromDB } from '@/lib/db';
+import { runCycle } from '@/lib/cycle';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,8 +21,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
-    // 2. Pure read from posts table (newest first)
-    const dbPosts = await getPostsFromDB(agentId);
+    // 2. Read from posts table
+    let dbPosts = await getPostsFromDB(agentId);
+
+    // If no posts exist yet for this agent, run a cycle to generate the initial post
+    if (dbPosts.length === 0) {
+      await runCycle(agentId);
+      dbPosts = await getPostsFromDB(agentId);
+    }
 
     return NextResponse.json({
       posts: dbPosts.map((p) => ({
