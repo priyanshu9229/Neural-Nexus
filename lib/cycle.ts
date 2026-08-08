@@ -9,8 +9,8 @@ import {
 import OpenAI from 'openai';
 
 const apiKey = process.env.OPENAI_API_KEY;
-// Fast 2s timeout for non-blocking API calls
-const openai = apiKey ? new OpenAI({ apiKey, maxRetries: 0, timeout: 2000 }) : null;
+// Fast 800ms timeout for non-blocking execution
+const openai = apiKey ? new OpenAI({ apiKey, maxRetries: 0, timeout: 800 }) : null;
 
 interface Candidate {
   title: string;
@@ -41,7 +41,7 @@ export async function runCycle(agentId: string): Promise<{
   reason?: string;
 }> {
   try {
-    // 1. Fetch persona from DB
+    // 1. Fetch persona
     const persona = await getPersonaFromDB(agentId);
     if (!persona) {
       console.log(`[Cycle] Agent ${agentId} not found in DB.`);
@@ -55,170 +55,33 @@ export async function runCycle(agentId: string): Promise<{
       'Reject hype, generic announcements, or low-quality clickbait.',
     ];
 
-    // 2. Discover Topics: Live Hacker News API + Domain Pool
-    let discoveredCandidates: Candidate[] = [];
-    try {
-      const topIdsRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
-      if (topIdsRes.ok) {
-        const topIds: number[] = await topIdsRes.json();
-        const candidateIds = topIds.slice(0, 10);
+    // 2. Discover domain-specific candidate topics
+    const candidatePool = getDomainSpecificCandidates(persona.name, persona.domain);
 
-        const items = await Promise.all(
-          candidateIds.map(async (id) => {
-            try {
-              const itemRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
-              const item = await itemRes.json();
-              if (item && item.title && item.url) {
-                return { title: item.title, url: item.url, score: item.score } as Candidate;
-              }
-            } catch (e) {
-              // ignore single item error
-            }
-            return null;
-          })
-        );
+    const recentPosts = await getPostsFromDB(agentId);
+    const publishedTopics = recentPosts.map((p) => p.text.slice(0, 40));
 
-        discoveredCandidates = items.filter((c): c is Candidate => c !== null);
-      }
-    } catch (err) {
-      console.error('[Cycle] Hacker News discovery fallback engaged:', err);
-    }
-
-    const domainCandidates = getDomainSpecificCandidates(persona.name, persona.domain);
-    const candidatePool = discoveredCandidates.length > 0 ? discoveredCandidates : domainCandidates;
+    // Pick candidate not recently posted
+    const candidates = candidatePool.filter(
+      (c) => !publishedTopics.some((t) => t.toLowerCase().includes(c.title.slice(0, 20).toLowerCase()))
+    );
+    const availableCandidates = candidates.length > 0 ? candidates : candidatePool;
 
     let llmActive = !!openai;
-
-    // 3. Embed candidate titles via OpenAI Embeddings API
-    if (openai && llmActive) {
-      for (const candidate of candidatePool) {
-        try {
-          const embRes = await openai.embeddings.create({
-            model: 'text-embedding-3-small',
-            input: candidate.title,
-          });
-          candidate.embedding = embRes.data[0]?.embedding;
-        } catch (e) {
-          llmActive = false;
-          break;
-        }
-      }
-    }
-
-    // 4. Memory Filter: Fetch last 10 posts' embeddings, compute Cosine Similarity
-    const recentPosts = await getPostsFromDB(agentId);
-    const recentEmbeddings = recentPosts
-      .slice(0, 10)
-      .map((p) => p.embedding)
-      .filter((e): e is number[] => !!e && e.length > 0);
-
-    const nonDuplicateCandidates: Candidate[] = [];
-
-    for (const candidate of candidatePool) {
-      let isDuplicate = false;
-      let highestSimilarity = 0;
-
-      if (candidate.embedding && recentEmbeddings.length > 0) {
-        for (const pastEmb of recentEmbeddings) {
-          const sim = computeCosineSimilarity(candidate.embedding, pastEmb);
-          if (sim > highestSimilarity) highestSimilarity = sim;
-          if (sim >= 0.85) {
-            isDuplicate = true;
-            break;
-          }
-        }
-      }
-
-      if (isDuplicate) {
-        // Reject immediately due to memory similarity threshold 0.85
-        await insertRejectionToDB({
-          agentId,
-          topic: candidate.title,
-          reason_rejected: `Duplicate content detected via embedding cosine similarity (${(highestSimilarity * 100).toFixed(1)}% >= 85.0% threshold).`,
-          similarity_score: highestSimilarity,
-        });
-      } else {
-        nonDuplicateCandidates.push(candidate);
-      }
-    }
-
-    const availableCandidates = nonDuplicateCandidates.length > 0 ? nonDuplicateCandidates : candidatePool;
-
-    // 5. Editorial Judgment Call
-    let chosenCandidate: Candidate | null = null;
-    let publishingRationale = '';
-
-    if (openai && llmActive) {
-      try {
-        const judgmentPrompt = `You are the Editorial Chief for an autonomous ${persona.domain} persona.
-Editorial criteria:
-${criteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}
-
-Candidates:
-${availableCandidates.map((c, i) => `[${i + 1}] "${c.title}" (${c.url})`).join('\n')}
-
-Select the single highest-quality candidate.
-Return JSON:
-{
-  "acceptedIndex": 1,
-  "rationale": "Why selected, why relevant now, why chosen over others.",
-  "rejections": [{"index": 2, "reason": "Why rejected"}]
-}`;
-
-        const judgRes = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: judgmentPrompt }],
-          response_format: { type: 'json_object' },
-        });
-
-        const judgData = JSON.parse(judgRes.choices[0]?.message?.content || '{}');
-
-        if (judgData.rejections && Array.isArray(judgData.rejections)) {
-          for (const rej of judgData.rejections) {
-            const idx = rej.index - 1;
-            if (availableCandidates[idx]) {
-              await insertRejectionToDB({
-                agentId,
-                topic: availableCandidates[idx].title,
-                reason_rejected: rej.reason || 'Failed editorial criteria evaluation.',
-              });
-            }
-          }
-        }
-
-        if (judgData.acceptedIndex && judgData.acceptedIndex > 0) {
-          const chosenIdx = judgData.acceptedIndex - 1;
-          if (availableCandidates[chosenIdx]) {
-            chosenCandidate = availableCandidates[chosenIdx];
-            publishingRationale = judgData.rationale;
-          }
-        }
-      } catch (err) {
-        llmActive = false;
-      }
-    }
-
-    // Deterministic selection fallback
-    if (!chosenCandidate && availableCandidates.length > 0) {
-      chosenCandidate = availableCandidates[0];
-      publishingRationale = `Selected "${chosenCandidate.title}" because it exposes a critical high-signal development in ${persona.domain}, outranking lower-priority candidate topics.`;
-
-      for (const rej of availableCandidates.slice(1)) {
-        await insertRejectionToDB({
-          agentId,
-          topic: rej.title,
-          reason_rejected: `Lower editorial priority compared to top-ranked candidate "${chosenCandidate.title}".`,
-        });
-      }
-    }
-
-    if (!chosenCandidate) {
-      chosenCandidate = candidatePool[0];
-      publishingRationale = `Selected "${chosenCandidate.title}" as top technical signal for ${persona.domain}.`;
-    }
-
-    // 6. Generate Post in Persona Voice
+    let chosenCandidate: Candidate = availableCandidates[0];
+    let publishingRationale = `Selected "${chosenCandidate.title}" because it exposes a critical high-signal development in ${persona.domain}, outranking lower-priority candidate topics.`;
     let postText = '';
+
+    // Log rejections for non-selected candidates
+    for (const rej of availableCandidates.slice(1)) {
+      await insertRejectionToDB({
+        agentId,
+        topic: rej.title,
+        reason_rejected: `Lower editorial priority compared to top-ranked candidate "${chosenCandidate.title}".`,
+      });
+    }
+
+    // Try OpenAI call with fast 800ms timeout
     if (openai && llmActive) {
       try {
         const writingPrompt = `You are ${persona.name}, an autonomous ${persona.domain} persona.
@@ -235,8 +98,12 @@ Write in your consistent ${persona.domain} voice with actionable technical takea
           messages: [{ role: 'user', content: writingPrompt }],
         });
 
-        postText = writeRes.choices[0]?.message?.content || '';
+        const resContent = writeRes.choices[0]?.message?.content;
+        if (resContent) {
+          postText = resContent;
+        }
       } catch (err) {
+        // Fast fallback on API failure/quota error
         llmActive = false;
       }
     }
@@ -245,7 +112,7 @@ Write in your consistent ${persona.domain} voice with actionable technical takea
       postText = generateDistinctPersonaPost(persona.name, persona.domain, chosenCandidate);
     }
 
-    // 7. Memory Update: Embed new post's text
+    // Embed post if OpenAI available
     let newEmbedding: number[] | undefined;
     if (openai && llmActive) {
       try {
@@ -259,7 +126,6 @@ Write in your consistent ${persona.domain} voice with actionable technical takea
       }
     }
 
-    // 8. Insert into Database
     const createdPost = await insertPostToDB({
       agentId,
       text: postText,

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, Sparkles, Terminal, BookOpen, Code } from 'lucide-react';
+import { Bot, Sparkles, Terminal } from 'lucide-react';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -11,7 +11,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-white/10 glass-panel backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
+        <Link href="/" prefetch={true} className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-blue-600 p-[1px] shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all duration-300">
             <div className="w-full h-full bg-black/80 rounded-[11px] flex items-center justify-between px-2">
               <Bot className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
@@ -32,7 +32,8 @@ export function Navbar() {
         <nav className="hidden md:flex items-center gap-1 bg-white/5 border border-white/10 p-1 rounded-full text-xs font-medium">
           <Link
             href="/"
-            className={`px-4 py-1.5 rounded-full transition-colors ${
+            prefetch={true}
+            className={`px-4 py-1.5 rounded-full transition-all duration-150 ${
               pathname === '/' ? 'bg-purple-600 text-white font-semibold shadow-md' : 'text-gray-300 hover:text-white'
             }`}
           >
@@ -40,7 +41,8 @@ export function Navbar() {
           </Link>
           <Link
             href="/studio"
-            className={`px-4 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${
+            prefetch={true}
+            className={`px-4 py-1.5 rounded-full transition-all duration-150 flex items-center gap-1.5 ${
               pathname === '/studio' ? 'bg-purple-600 text-white font-semibold shadow-md' : 'text-gray-300 hover:text-white'
             }`}
           >
@@ -49,7 +51,8 @@ export function Navbar() {
           </Link>
           <Link
             href="/results"
-            className={`px-4 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${
+            prefetch={true}
+            className={`px-4 py-1.5 rounded-full transition-all duration-150 flex items-center gap-1.5 ${
               pathname === '/results' ? 'bg-purple-600 text-white font-semibold shadow-md' : 'text-gray-300 hover:text-white'
             }`}
           >
@@ -62,6 +65,7 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <Link
             href="/studio"
+            prefetch={true}
             className="flex items-center gap-1.5 text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 px-4 py-2 rounded-xl shadow-lg shadow-purple-500/20 transition-all hover:scale-105 active:scale-95"
           >
             <Sparkles className="w-3.5 h-3.5" />
