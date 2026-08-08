@@ -36,7 +36,7 @@ export interface DBRejection {
   created_at: string;
 }
 
-// In-Memory & Local Disk fallback when Supabase is initializing
+// In-Memory & Local Disk fallback for ultra-fast response
 const LOCAL_DATA_DIR = path.join(process.cwd(), '.data');
 const LOCAL_DB_FILE = path.join(LOCAL_DATA_DIR, 'db.json');
 
@@ -71,15 +71,32 @@ function saveLocalDB(data: LocalDB) {
   }
 }
 
+// Fast timeout wrapper to prevent Supabase network timeouts from blocking routes
+async function withFastTimeout<T>(promiseLike: PromiseLike<T>, ms = 250): Promise<T | null> {
+  let timer: NodeJS.Timeout;
+  const timeoutPromise = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+
+  try {
+    const res = (await Promise.race([Promise.resolve(promiseLike), timeoutPromise])) as T | null;
+    clearTimeout(timer!);
+    return res;
+  } catch {
+    clearTimeout(timer!);
+    return null;
+  }
+}
+
 // Database helper operations
 export async function getPersonaFromDB(agentId: string): Promise<DBPersona | null> {
   if (supabase) {
-    const { data, error } = await supabase
-      .from('personas')
-      .select('*')
-      .eq('agentId', agentId)
-      .single();
-    if (data && !error) return data as DBPersona;
+    const supabaseRes = await withFastTimeout(
+      supabase.from('personas').select('*').eq('agentId', agentId).single()
+    );
+    if (supabaseRes && 'data' in supabaseRes && supabaseRes.data && !supabaseRes.error) {
+      return supabaseRes.data as DBPersona;
+    }
   }
   const db = loadLocalDB();
   return db.personas[agentId] || null;
@@ -91,12 +108,15 @@ export async function insertPersonaToDB(persona: Omit<DBPersona, 'agentId' | 'cr
   const newPersona: DBPersona = { ...persona, agentId, created_at };
 
   if (supabase) {
-    const { data, error } = await supabase
-      .from('personas')
-      .insert([newPersona])
-      .select()
-      .single();
-    if (data && !error) return data as DBPersona;
+    const supabaseRes = await withFastTimeout(
+      supabase.from('personas').insert([newPersona]).select().single()
+    );
+    if (supabaseRes && 'data' in supabaseRes && supabaseRes.data && !supabaseRes.error) {
+      const db = loadLocalDB();
+      db.personas[agentId] = newPersona;
+      saveLocalDB(db);
+      return supabaseRes.data as DBPersona;
+    }
   }
 
   const db = loadLocalDB();
@@ -107,18 +127,16 @@ export async function insertPersonaToDB(persona: Omit<DBPersona, 'agentId' | 'cr
 
 export async function getPostsFromDB(agentId: string): Promise<DBPost[]> {
   if (supabase) {
-    const { data, error } = await supabase
-      .from('posts')
-      .select('id, agentId, text, rationale, sources, created_at')
-      .eq('agentId', agentId)
-      .order('created_at', { ascending: false });
-    if (data && !error) return data as DBPost[];
+    const supabaseRes = await withFastTimeout(
+      supabase.from('posts').select('*').eq('agentId', agentId).order('created_at', { ascending: false })
+    );
+    if (supabaseRes && 'data' in supabaseRes && supabaseRes.data && !supabaseRes.error) {
+      return supabaseRes.data as DBPost[];
+    }
   }
 
   const db = loadLocalDB();
-  return db.posts
-    .filter((p) => p.agentId === agentId)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return db.posts.filter((p) => p.agentId === agentId).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 export async function insertPostToDB(post: Omit<DBPost, 'id' | 'created_at'> & { id?: string }): Promise<DBPost> {
@@ -127,8 +145,15 @@ export async function insertPostToDB(post: Omit<DBPost, 'id' | 'created_at'> & {
   const newPost: DBPost = { ...post, id, created_at };
 
   if (supabase) {
-    const { data, error } = await supabase.from('posts').insert([newPost]).select().single();
-    if (data && !error) return data as DBPost;
+    const supabaseRes = await withFastTimeout(
+      supabase.from('posts').insert([newPost]).select().single()
+    );
+    if (supabaseRes && 'data' in supabaseRes && supabaseRes.data && !supabaseRes.error) {
+      const db = loadLocalDB();
+      db.posts.unshift(newPost);
+      saveLocalDB(db);
+      return supabaseRes.data as DBPost;
+    }
   }
 
   const db = loadLocalDB();
@@ -143,8 +168,15 @@ export async function insertRejectionToDB(rejection: Omit<DBRejection, 'id' | 'c
   const newRejection: DBRejection = { ...rejection, id, created_at };
 
   if (supabase) {
-    const { data, error } = await supabase.from('rejections').insert([newRejection]).select().single();
-    if (data && !error) return data as DBRejection;
+    const supabaseRes = await withFastTimeout(
+      supabase.from('rejections').insert([newRejection]).select().single()
+    );
+    if (supabaseRes && 'data' in supabaseRes && supabaseRes.data && !supabaseRes.error) {
+      const db = loadLocalDB();
+      db.rejections.unshift(newRejection);
+      saveLocalDB(db);
+      return supabaseRes.data as DBRejection;
+    }
   }
 
   const db = loadLocalDB();
@@ -155,24 +187,26 @@ export async function insertRejectionToDB(rejection: Omit<DBRejection, 'id' | 'c
 
 export async function getRejectionsFromDB(agentId: string): Promise<DBRejection[]> {
   if (supabase) {
-    const { data, error } = await supabase
-      .from('rejections')
-      .select('*')
-      .eq('agentId', agentId)
-      .order('created_at', { ascending: false });
-    if (data && !error) return data as DBRejection[];
+    const supabaseRes = await withFastTimeout(
+      supabase.from('rejections').select('*').eq('agentId', agentId).order('created_at', { ascending: false })
+    );
+    if (supabaseRes && 'data' in supabaseRes && supabaseRes.data && !supabaseRes.error) {
+      return supabaseRes.data as DBRejection[];
+    }
   }
 
   const db = loadLocalDB();
-  return db.rejections
-    .filter((r) => r.agentId === agentId)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return db.rejections.filter((r) => r.agentId === agentId).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 export async function getAllPersonasFromDB(): Promise<DBPersona[]> {
   if (supabase) {
-    const { data, error } = await supabase.from('personas').select('*');
-    if (data && !error) return data as DBPersona[];
+    const supabaseRes = await withFastTimeout(
+      supabase.from('personas').select('*')
+    );
+    if (supabaseRes && 'data' in supabaseRes && supabaseRes.data && !supabaseRes.error) {
+      return supabaseRes.data as DBPersona[];
+    }
   }
 
   const db = loadLocalDB();
