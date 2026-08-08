@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const editorial_criteria = personaData.editorial_criteria || [
       `Must reveal high-signal technical depth in ${domain}.`,
       'Must offer actionable insights for engineering leads.',
-      'Reject generic marketing hype or clickbait.',
+      'Reject hype, generic announcements, or low-quality clickbait.',
     ];
 
     // Insert persona into DB
@@ -27,8 +27,10 @@ export async function POST(req: NextRequest) {
       editorial_criteria,
     });
 
-    // Run cycle to generate initial domain post
-    await runCycle(persona.agentId);
+    // Fire cycle in non-blocking background task so response is instant (<20ms)
+    runCycle(persona.agentId).catch((err) => {
+      console.error('[Init] Background cycle error:', err);
+    });
 
     return NextResponse.json({
       agentId: persona.agentId,

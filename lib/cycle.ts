@@ -9,7 +9,8 @@ import {
 import OpenAI from 'openai';
 
 const apiKey = process.env.OPENAI_API_KEY;
-const openai = apiKey ? new OpenAI({ apiKey, maxRetries: 0, timeout: 1500 }) : null;
+// Fast 800ms timeout for non-blocking execution
+const openai = apiKey ? new OpenAI({ apiKey, maxRetries: 0, timeout: 800 }) : null;
 
 interface Candidate {
   title: string;
@@ -80,7 +81,7 @@ export async function runCycle(agentId: string): Promise<{
       });
     }
 
-    // Try OpenAI call with fast 1.5s timeout
+    // Try OpenAI call with fast 800ms timeout
     if (openai && llmActive) {
       try {
         const writingPrompt = `You are ${persona.name}, an autonomous ${persona.domain} persona.
