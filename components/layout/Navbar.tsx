@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, Sparkles, Terminal, FileCode2, ExternalLink, Code } from 'lucide-react';
+import { Bot, Sparkles, Terminal, BookOpen, Code } from 'lucide-react';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -21,10 +21,10 @@ export function Navbar() {
             <span className="font-bold text-lg tracking-tight flex items-center gap-1.5 text-white">
               Creator<span className="gradient-text">OS</span>
               <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-purple-300">
-                v1.0 AI
+                PRO
               </span>
             </span>
-            <span className="text-[10px] text-gray-400 font-medium">Autonomous Content Studio</span>
+            <span className="text-[10px] text-gray-400 font-medium">Autonomous AI Studio</span>
           </div>
         </Link>
 
@@ -44,7 +44,7 @@ export function Navbar() {
               pathname === '/studio' ? 'bg-purple-600 text-white font-semibold shadow-md' : 'text-gray-300 hover:text-white'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 text-purple-300" />
             Studio
           </Link>
           <Link
@@ -53,32 +53,20 @@ export function Navbar() {
               pathname === '/results' ? 'bg-purple-600 text-white font-semibold shadow-md' : 'text-gray-300 hover:text-white'
             }`}
           >
-            <Terminal className="w-3.5 h-3.5" />
-            Results Package
+            <Terminal className="w-3.5 h-3.5 text-cyan-300" />
+            Deliverables
           </Link>
         </nav>
 
-        {/* Right CTA / PROMPTS link */}
+        {/* Right CTA */}
         <div className="flex items-center gap-3">
-          <a
-            href="https://github.com/priyanshu9229/Neural-Nexus/blob/main/PROMPTS.md"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-gray-300 hover:text-purple-300 px-3 py-1.5 rounded-lg border border-white/10 hover:border-purple-500/30 bg-white/5 transition-all"
+          <Link
+            href="/studio"
+            className="flex items-center gap-1.5 text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 px-4 py-2 rounded-xl shadow-lg shadow-purple-500/20 transition-all hover:scale-105 active:scale-95"
           >
-            <FileCode2 className="w-3.5 h-3.5 text-purple-400" />
-            PROMPTS.md
-          </a>
-
-          <a
-            href="https://github.com/priyanshu9229/Neural-Nexus"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs font-medium text-white bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-lg border border-white/15 transition-all"
-          >
-            <Code className="w-4 h-4 text-purple-400" />
-            <span className="hidden sm:inline">Repository</span>
-          </a>
+            <Sparkles className="w-3.5 h-3.5" />
+            Start Creating
+          </Link>
         </div>
       </div>
     </header>
