@@ -116,45 +116,42 @@ export default function StudioPage() {
 
   return (
     <div className="space-y-8 py-4">
-      {/* Mode Navigation Bar */}
+      {/* Studio Navigation & Mode Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
               CreatorOS <span className="gradient-text">Studio</span>
             </h1>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
-              Pro Persona Edition
-            </span>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            Autonomous AI Persona engine & multi-agent campaign studio.
+            Choose between live autonomous AI persona feeds or generating custom multi-platform campaigns.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl text-xs font-mono">
+        <div className="flex items-center gap-2 p-1.5 bg-white/5 border border-white/10 rounded-2xl text-xs font-medium">
           <button
             onClick={() => setActiveTab('autonomous')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
               activeTab === 'autonomous'
-                ? 'bg-purple-600 text-white font-semibold shadow-md shadow-purple-600/30'
+                ? 'bg-purple-600 text-white font-semibold shadow-lg shadow-purple-600/30'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
             <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-            Autonomous Feed Engine
+            Autonomous Persona Feed
           </button>
 
           <button
             onClick={() => setActiveTab('interactive')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
               activeTab === 'interactive'
-                ? 'bg-purple-600 text-white font-semibold shadow-md shadow-purple-600/30'
+                ? 'bg-purple-600 text-white font-semibold shadow-lg shadow-purple-600/30'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
             <Zap className="w-3.5 h-3.5 text-yellow-300" />
-            Interactive Campaign Studio
+            Custom Campaign Studio
           </button>
         </div>
       </div>
@@ -168,9 +165,9 @@ export default function StudioPage() {
             <div className="flex items-center justify-between">
               <label className="text-xs font-mono uppercase tracking-wider text-purple-300 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-purple-400" />
-                Define Content Objective
+                Define Content Goal
               </label>
-              <span className="text-[11px] font-mono text-gray-500">Single prompt triggers 6 agents</span>
+              <span className="text-[11px] font-mono text-gray-500">Triggers 6 AI Agents</span>
             </div>
 
             <div className="space-y-2">

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bot, Sparkles, RefreshCw, Copy, Check, ShieldCheck, Terminal, ExternalLink, Activity, Layers } from 'lucide-react';
+import { Bot, Sparkles, RefreshCw, Check, ExternalLink, Activity, ChevronDown, ChevronUp, Terminal, Copy } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface FeedPost {
   id: string;
@@ -11,28 +12,35 @@ interface FeedPost {
   sources: string[];
 }
 
+const PERSONAS = [
+  { n: 'Ada', d: 'AI Security Specialist', avatar: '🛡️', bg: 'from-purple-900/40 to-blue-950/40', tag: 'Security & Alignment' },
+  { n: 'Alex', d: 'ML Systems Architect', avatar: '⚡', bg: 'from-blue-900/40 to-cyan-950/40', tag: 'Inference & LLMOps' },
+  { n: 'Maya', d: 'Robotics Lead', avatar: '🤖', bg: 'from-emerald-900/40 to-teal-950/40', tag: 'Embodied AI & Hardware' },
+  { n: 'Sam', d: 'Open Source Advocate', avatar: '🌐', bg: 'from-amber-900/40 to-orange-950/40', tag: 'Open Weights & Infra' },
+];
+
 export function AutonomousFeedDashboard() {
-  const [name, setName] = useState('Ada');
-  const [domain, setDomain] = useState('AI Security');
+  const [selectedPersona, setSelectedPersona] = useState(PERSONAS[0]);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
-  const [copiedId, setCopiedId] = useState(false);
+  const [expandedRationale, setExpandedRationale] = useState<Record<string, boolean>>({});
+  const [showDeveloperDocs, setShowDeveloperDocs] = useState(false);
+
   const [copiedCurlInit, setCopiedCurlInit] = useState(false);
   const [copiedCurlFeed, setCopiedCurlFeed] = useState(false);
 
-  const initializePersona = async (selectedName?: string, selectedDomain?: string) => {
+  const initializePersona = async (p = selectedPersona) => {
     setIsInitializing(true);
-    const n = selectedName || name;
-    const d = selectedDomain || domain;
+    setSelectedPersona(p);
 
     try {
       const res = await fetch('/api/agent/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          persona: { name: n, domain: d },
+          persona: { name: p.n, domain: p.d },
         }),
       });
 
@@ -48,13 +56,11 @@ export function AutonomousFeedDashboard() {
     }
   };
 
-  const fetchFeed = async (idToUse?: string) => {
-    const id = idToUse || agentId;
-    if (!id) return;
-
+  const fetchFeed = async (idToUse = agentId) => {
+    if (!idToUse) return;
     setIsFetching(true);
     try {
-      const res = await fetch(`/api/agent/feed?agentId=${id}`);
+      const res = await fetch(`/api/agent/feed?agentId=${idToUse}`);
       const data = await res.json();
       if (data.posts) {
         setPosts(data.posts);
@@ -66,242 +72,251 @@ export function AutonomousFeedDashboard() {
     }
   };
 
-  // Poll feed every 15 seconds if agent initialized
+  // Poll feed automatically
   useEffect(() => {
     if (!agentId) return;
-    const interval = setInterval(() => {
-      fetchFeed(agentId);
-    }, 15000);
+    const interval = setInterval(() => fetchFeed(agentId), 12000);
     return () => clearInterval(interval);
   }, [agentId]);
 
-  // Auto initialize Ada on first load if not initialized
+  // Initial setup
   useEffect(() => {
     if (!agentId) {
-      initializePersona('Ada', 'AI Security');
+      initializePersona(PERSONAS[0]);
     }
   }, []);
 
-  const copyAgentId = () => {
-    if (!agentId) return;
-    navigator.clipboard.writeText(agentId);
-    setCopiedId(true);
-    setTimeout(() => setCopiedId(false), 2000);
+  const toggleRationale = (postId: string) => {
+    setExpandedRationale((prev) => ({ ...prev, [postId]: !prev[postId] }));
   };
 
-  const curlInit = `curl -X POST http://localhost:3000/api/agent/init -H "Content-Type: application/json" -d '{"persona": {"name": "${name}", "domain": "${domain}"}}'`;
-  const curlFeed = `curl http://localhost:3000/api/agent/feed?agentId=${agentId || 'abc-123'}`;
+  const curlInit = `curl -X POST http://localhost:3000/api/agent/init -H "Content-Type: application/json" -d '{"persona": {"name": "${selectedPersona.n}", "domain": "${selectedPersona.d}"}}'`;
+  const curlFeed = `curl http://localhost:3000/api/agent/feed?agentId=${agentId || 'agent-id'}`;
 
   return (
-    <div className="space-y-8">
-      {/* Initialization & Persona Setup */}
-      <div className="rounded-3xl p-6 glass-panel border border-purple-500/30 space-y-6 shadow-2xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+    <div className="space-y-8 max-w-5xl mx-auto">
+      {/* Persona Selection Banner */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-purple-400 flex items-center gap-1.5 mb-1">
-              <Sparkles className="w-3.5 h-3.5" />
-              Autonomous Persona Engine
-            </span>
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              Autonomous AI Persona Feed
+              Select Autonomous AI Persona
             </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Choose an AI persona below. Once selected, the agent independently researches and publishes content over time.
+            </p>
           </div>
 
-          {agentId && (
-            <div className="flex items-center gap-2 bg-purple-950/40 border border-purple-500/40 px-3 py-1.5 rounded-xl font-mono text-xs text-purple-300">
-              <span>Agent ID:</span>
-              <span className="text-white font-bold">{agentId}</span>
-              <button
-                onClick={copyAgentId}
-                className="ml-1 text-gray-400 hover:text-white p-1 rounded hover:bg-white/10"
-              >
-                {copiedId ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-full shrink-0">
+            <Activity className="w-3.5 h-3.5 animate-pulse" />
+            <span>Autonomous Engine Active</span>
+          </div>
         </div>
 
-        {/* Preset Personas */}
-        <div className="space-y-2">
-          <label className="text-xs font-mono text-gray-400 uppercase tracking-wider">
-            Select or Initialize Autonomous Persona
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {[
-              { n: 'Ada', d: 'AI Security', icon: '🛡️' },
-              { n: 'Alex', d: 'ML Engineer', icon: '⚡' },
-              { n: 'Maya', d: 'Robotics Engineer', icon: '🤖' },
-              { n: 'Sam', d: 'Open Source Advocate', icon: '🌐' },
-            ].map((p) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {PERSONAS.map((p) => {
+            const isSelected = selectedPersona.n === p.n;
+            return (
               <button
                 key={p.n}
-                onClick={() => {
-                  setName(p.n);
-                  setDomain(p.d);
-                  initializePersona(p.n, p.d);
-                }}
-                className={`p-3 rounded-xl border text-left transition-all font-sans text-xs ${
-                  name === p.n && domain === p.d
-                    ? 'bg-purple-600/30 border-purple-500 text-white font-semibold shadow-lg shadow-purple-500/20'
-                    : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+                onClick={() => initializePersona(p)}
+                disabled={isInitializing}
+                className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden group ${
+                  isSelected
+                    ? 'bg-gradient-to-br from-purple-900/40 via-purple-950/30 to-black border-purple-500/60 shadow-xl shadow-purple-500/20 ring-1 ring-purple-500/40'
+                    : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.05] hover:border-white/20'
                 }`}
               >
-                <div className="text-base mb-1">{p.icon}</div>
-                <div className="font-bold text-white">{p.n}</div>
-                <div className="text-[10px] text-gray-400">{p.d}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl">{p.avatar}</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-400">
+                    {p.tag}
+                  </span>
+                </div>
+                <h3 className="font-bold text-sm text-white group-hover:text-purple-300 transition-colors">
+                  {p.n}
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">{p.d}</p>
 
-        {/* Custom Persona Setup */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Persona Name (e.g. Ada)"
-            className="w-full sm:w-1/3 bg-[#090A12] border border-white/10 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none"
-          />
-          <input
-            type="text"
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-            placeholder="Domain (e.g. AI Security)"
-            className="w-full sm:w-1/2 bg-[#090A12] border border-white/10 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none"
-          />
-          <button
-            onClick={() => initializePersona()}
-            disabled={isInitializing}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shrink-0 shadow-lg shadow-purple-500/20 transition-all"
-          >
-            {isInitializing ? 'Initializing...' : 'Initialize Persona'}
-          </button>
+                {isSelected && (
+                  <div className="mt-3 flex items-center gap-1 text-[11px] font-mono text-purple-300">
+                    <Check className="w-3 h-3 text-emerald-400" /> Active Persona
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Live Autonomous Feed */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-mono uppercase tracking-wider text-purple-300 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
-            Live Autonomous Feed (GET /api/agent/feed)
-          </h3>
+      {/* Live Feed Header */}
+      <div className="rounded-3xl glass-panel p-6 border border-white/10 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-xl">
+              {selectedPersona.avatar}
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                {selectedPersona.n}'s Live Feed
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  {selectedPersona.d}
+                </span>
+              </h3>
+              <p className="text-xs text-gray-400">
+                Self-updating feed • {posts.length} published insight{posts.length === 1 ? '' : 's'}
+              </p>
+            </div>
+          </div>
 
           <button
             onClick={() => fetchFeed()}
             disabled={isFetching}
-            className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-purple-500/40 text-gray-300 hover:text-white transition-all"
+            className="flex items-center justify-center gap-2 text-xs font-medium px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all active:scale-95"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin text-purple-400' : ''}`} />
-            <span>Refresh Feed</span>
+            <RefreshCw className={`w-3.5 h-3.5 text-purple-400 ${isFetching ? 'animate-spin' : ''}`} />
+            <span>{isFetching ? 'Checking Feed...' : 'Sync Feed'}</span>
           </button>
         </div>
 
+        {/* Feed Posts */}
         {posts.length === 0 ? (
-          <div className="glass-panel p-8 rounded-2xl text-center text-xs text-gray-400">
-            Initializing autonomous feed... Evaluators can poll <code className="font-mono text-purple-300">GET /api/agent/feed?agentId={agentId || '...'}</code> to receive new posts.
+          <div className="py-12 text-center text-xs text-gray-400 space-y-2">
+            <RefreshCw className="w-6 h-6 animate-spin text-purple-400 mx-auto" />
+            <p>Initializing autonomous feed for {selectedPersona.n}...</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {posts.map((post) => (
-              <div key={post.id} className="rounded-2xl glass-panel p-5 space-y-3 border border-white/10 hover:border-purple-500/30 transition-all">
-                <div className="flex items-center justify-between text-xs border-b border-white/10 pb-2">
-                  <div className="flex items-center gap-2 font-mono">
-                    <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px]">
-                      {post.id}
-                    </span>
-                    <span className="text-gray-400">{post.createdAt}</span>
-                  </div>
-
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    AUTONOMOUS POST
-                  </span>
-                </div>
-
-                <div className="text-xs text-gray-200 whitespace-pre-wrap leading-relaxed font-sans bg-[#080911] p-4 rounded-xl border border-white/5">
-                  {post.text}
-                </div>
-
-                <div className="space-y-2 pt-1">
-                  <div className="bg-purple-950/30 border border-purple-500/30 rounded-xl p-3 text-xs space-y-1">
-                    <span className="font-bold text-purple-300 font-mono text-[11px] block">
-                      📌 Publishing Rationale:
-                    </span>
-                    <p className="text-gray-300 leading-relaxed text-[11px] font-sans">{post.rationale}</p>
-                  </div>
-
-                  {post.sources && post.sources.length > 0 && (
-                    <div className="flex items-center gap-2 text-xs font-mono text-gray-400">
-                      <span>Sources:</span>
-                      {post.sources.map((src, i) => (
-                        <a
-                          key={i}
-                          href={src}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-purple-400 hover:underline flex items-center gap-1"
-                        >
-                          {src} <ExternalLink className="w-3 h-3" />
-                        </a>
-                      ))}
+            {posts.map((post) => {
+              const isExpanded = expandedRationale[post.id];
+              return (
+                <motion.div
+                  key={post.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-2xl bg-[#080911] border border-white/10 p-5 space-y-4 hover:border-purple-500/30 transition-all shadow-lg"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="font-semibold text-white">{selectedPersona.n}</span>
+                      <span className="text-gray-500 font-mono">•</span>
+                      <span className="text-gray-400 font-mono text-[11px]">{new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
-                  )}
-                </div>
-              </div>
-            ))}
+
+                    {post.sources && post.sources[0] && (
+                      <a
+                        href={post.sources[0]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[11px] font-mono text-purple-400 hover:text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20 transition-all"
+                      >
+                        <span>View Live Source</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-gray-200 leading-relaxed font-sans whitespace-pre-wrap">
+                    {post.text}
+                  </p>
+
+                  {/* Why Selected Dropdown */}
+                  <div className="border-t border-white/5 pt-3">
+                    <button
+                      onClick={() => toggleRationale(post.id)}
+                      className="flex items-center justify-between w-full text-[11px] font-mono text-purple-300 hover:text-purple-200 transition-colors"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        Why {selectedPersona.n} selected & published this topic
+                      </span>
+                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="mt-2 p-3 rounded-xl bg-purple-950/20 border border-purple-500/20 text-xs text-gray-300 leading-relaxed font-sans"
+                        >
+                          {post.rationale}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Evaluator API Inspection Box */}
-      <div className="rounded-2xl glass-panel p-5 space-y-3 border border-purple-500/30 bg-black/40">
-        <h4 className="font-mono text-xs text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-          <Terminal className="w-4 h-4 text-purple-400" />
-          Evaluator API Verification Commands
-        </h4>
+      {/* Optional Collapsible Developer API Drawer for Evaluators */}
+      <div className="border border-white/10 rounded-2xl glass-panel overflow-hidden">
+        <button
+          onClick={() => setShowDeveloperDocs(!showDeveloperDocs)}
+          className="w-full px-5 py-3 flex items-center justify-between text-xs font-mono text-gray-400 hover:text-white bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-purple-400" />
+            Developer & Hackathon API Endpoints (POST /init & GET /feed)
+          </span>
+          {showDeveloperDocs ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
 
-        <div className="space-y-2 text-xs font-mono">
-          <div>
-            <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1">
-              <span>1. Initialize Agent (POST /api/agent/init)</span>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(curlInit);
-                  setCopiedCurlInit(true);
-                  setTimeout(() => setCopiedCurlInit(false), 2000);
-                }}
-                className="hover:text-white flex items-center gap-1"
-              >
-                {copiedCurlInit ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                <span>{copiedCurlInit ? 'Copied' : 'Copy cURL'}</span>
-              </button>
-            </div>
-            <pre className="p-2.5 rounded-lg bg-[#07080F] border border-white/10 text-gray-300 overflow-x-auto text-[11px]">
-              {curlInit}
-            </pre>
-          </div>
+        <AnimatePresence>
+          {showDeveloperDocs && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="p-5 border-t border-white/10 space-y-3 bg-black/60 font-mono text-xs text-gray-300"
+            >
+              <div>
+                <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                  <span>1. Initialize Agent (POST /api/agent/init)</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(curlInit);
+                      setCopiedCurlInit(true);
+                      setTimeout(() => setCopiedCurlInit(false), 2000);
+                    }}
+                    className="text-purple-400 hover:underline flex items-center gap-1"
+                  >
+                    {copiedCurlInit ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedCurlInit ? 'Copied' : 'Copy cURL'}</span>
+                  </button>
+                </div>
+                <pre className="p-3 rounded-xl bg-[#06070D] border border-white/10 text-gray-300 overflow-x-auto text-[11px]">
+                  {curlInit}
+                </pre>
+              </div>
 
-          <div>
-            <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1">
-              <span>2. Retrieve Feed (GET /api/agent/feed?agentId=...)</span>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(curlFeed);
-                  setCopiedCurlFeed(true);
-                  setTimeout(() => setCopiedCurlFeed(false), 2000);
-                }}
-                className="hover:text-white flex items-center gap-1"
-              >
-                {copiedCurlFeed ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                <span>{copiedCurlFeed ? 'Copied' : 'Copy cURL'}</span>
-              </button>
-            </div>
-            <pre className="p-2.5 rounded-lg bg-[#07080F] border border-white/10 text-gray-300 overflow-x-auto text-[11px]">
-              {curlFeed}
-            </pre>
-          </div>
-        </div>
+              <div>
+                <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                  <span>2. Retrieve Autonomous Feed (GET /api/agent/feed?agentId=...)</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(curlFeed);
+                      setCopiedCurlFeed(true);
+                      setTimeout(() => setCopiedCurlFeed(false), 2000);
+                    }}
+                    className="text-purple-400 hover:underline flex items-center gap-1"
+                  >
+                    {copiedCurlFeed ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedCurlFeed ? 'Copied' : 'Copy cURL'}</span>
+                  </button>
+                </div>
+                <pre className="p-3 rounded-xl bg-[#06070D] border border-white/10 text-gray-300 overflow-x-auto text-[11px]">
+                  {curlFeed}
+                </pre>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
