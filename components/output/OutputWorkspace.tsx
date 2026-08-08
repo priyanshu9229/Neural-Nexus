@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   Check,
   Copy,
+  Download,
+  FileCode,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -21,54 +23,114 @@ export function OutputWorkspace() {
 
   if (!finalPackage) return null;
 
-  const copyFullPackage = () => {
-    const text = `
-=== CREATOROS CONTENT PACKAGE ===
-Title: ${finalPackage.title}
-Summary: ${finalPackage.summary}
+  const getFullMarkdownText = () => {
+    return `# ${finalPackage.title}
 
---- LINKEDIN POST ---
+> ${finalPackage.summary}
+
+---
+
+## 💼 LinkedIn Post Draft
 ${finalPackage.linkedinPost}
 
---- X (TWITTER) THREAD ---
-${finalPackage.twitterThread.join('\n\n')}
+---
 
---- BLOG OUTLINE ---
-Title: ${finalPackage.blogOutline.title}
-Audience: ${finalPackage.blogOutline.targetAudience}
-Sections:
-${finalPackage.blogOutline.sections.map((s) => `${s.heading}\n${s.points.map((p) => `  - ${p}`).join('\n')}`).join('\n\n')}
+## 🧵 X (Twitter) Thread
+${finalPackage.twitterThread.map((tweet, i) => `### Tweet ${i + 1}\n${tweet}`).join('\n\n')}
 
---- HASHTAGS ---
+---
+
+## 📝 Blog Outline: ${finalPackage.blogOutline.title}
+**Target Audience:** ${finalPackage.blogOutline.targetAudience}
+
+${finalPackage.blogOutline.sections
+  .map((s) => `### ${s.heading}\n${s.points.map((p) => `- ${p}`).join('\n')}`)
+  .join('\n\n')}
+
+---
+
+## 🏷️ Curated Hashtags
 ${finalPackage.hashtags.join(' ')}
 
---- MIDJOURNEY / DALL-E IMAGE PROMPT ---
+---
+
+## 🖼️ Midjourney / DALL·E 3 Visual Asset Prompt
+\`\`\`text
 ${finalPackage.imagePrompt}
+\`\`\`
+
+---
+
+## 💡 AI Insights & Critique Notes
+- **Key Insights:** ${finalPackage.keyInsights.join('; ')}
+- **Reviewer Notes:** ${finalPackage.critiqueNotes.join('; ')}
+- **Improvements Made:** ${finalPackage.improvementsMade.join('; ')}
 `;
-    navigator.clipboard.writeText(text);
+  };
+
+  const copyFullPackage = () => {
+    navigator.clipboard.writeText(getFullMarkdownText());
     setPackageCopied(true);
     setTimeout(() => setPackageCopied(false), 2000);
   };
 
+  const downloadMarkdown = () => {
+    const element = document.createElement('a');
+    const file = new Blob([getFullMarkdownText()], { type: 'text/markdown' });
+    element.href = URL.createObjectURL(file);
+    element.download = `${finalPackage.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_content_package.md`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  const downloadJSON = () => {
+    const element = document.createElement('a');
+    const file = new Blob([JSON.stringify(finalPackage, null, 2)], { type: 'application/json' });
+    element.href = URL.createObjectURL(file);
+    element.download = `${finalPackage.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_content_package.json`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
   return (
     <div className="space-y-6 pt-4 border-t border-white/10">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-purple-900/30 via-blue-900/20 to-emerald-900/20 p-5 rounded-2xl border border-purple-500/30">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-purple-900/30 via-blue-900/20 to-emerald-900/20 p-5 rounded-2xl border border-purple-500/30">
         <div>
           <span className="text-[11px] font-mono uppercase tracking-wider text-purple-400 flex items-center gap-1.5 mb-1">
             <Sparkles className="w-3.5 h-3.5" />
-            Final Deliverables Ready
+            Final Deliverables Package Ready
           </span>
           <h2 className="text-xl font-bold text-white tracking-tight">{finalPackage.title}</h2>
           <p className="text-xs text-gray-300 mt-1">{finalPackage.summary}</p>
         </div>
 
-        <button
-          onClick={copyFullPackage}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-medium text-xs shadow-lg shadow-purple-500/25 transition-all shrink-0 active:scale-95"
-        >
-          {packageCopied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
-          <span>{packageCopied ? 'Entire Package Copied!' : 'Copy Full Content Package'}</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <button
+            onClick={copyFullPackage}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs shadow-lg shadow-purple-500/20 transition-all active:scale-95"
+          >
+            {packageCopied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{packageCopied ? 'Copied Markdown' : 'Copy Package'}</span>
+          </button>
+
+          <button
+            onClick={downloadMarkdown}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-xs font-mono transition-all active:scale-95"
+          >
+            <Download className="w-3.5 h-3.5 text-purple-400" />
+            <span>.MD</span>
+          </button>
+
+          <button
+            onClick={downloadJSON}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-xs font-mono transition-all active:scale-95"
+          >
+            <FileCode className="w-3.5 h-3.5 text-cyan-400" />
+            <span>.JSON</span>
+          </button>
+        </div>
       </div>
 
       {/* Workspace Tabs */}

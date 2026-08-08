@@ -1,14 +1,12 @@
 import OpenAI from 'openai';
 import { AgentName, ContentPackage, StreamEvent } from '@/types';
 import { generateMockContentPackage } from './mockGenerator';
-import {
-  PlannerOutputSchema,
-  ResearcherOutputSchema,
-  WriterOutputSchema,
-  ReviewerOutputSchema,
-  ImproverOutputSchema,
-  PublisherOutputSchema,
-} from '@/lib/schemas';
+import { runPlannerAgent } from './planner';
+import { runResearcherAgent } from './researcher';
+import { runWriterAgent } from './writer';
+import { runReviewerAgent } from './reviewer';
+import { runImproverAgent } from './improver';
+import { runPublisherAgent } from './publisher';
 
 const apiKey = process.env.OPENAI_API_KEY;
 const openai = apiKey ? new OpenAI({ apiKey }) : null;
@@ -28,43 +26,21 @@ export async function runAgentPipelineStream(
     onEvent({ agent: 'Planner', type: 'status', status: 'running' });
     onEvent({ agent: 'Planner', type: 'token', token: '🤔 Analyzing goal and constructing content strategy...\n' });
 
-    const plannerPrompt = `Goal: "${goal}"\nDeconstruct this goal into a strategic topic title, target audience, core hook angle, and 5 sub-tasks. Return JSON matching PlannerOutputSchema.`;
-    const plannerRes = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are the Content Strategy Planner Agent for CreatorOS.' },
-        { role: 'user', content: plannerPrompt },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const plannerJson = JSON.parse(plannerRes.choices[0]?.message?.content || '{}');
-    const plannerData = PlannerOutputSchema.parse(plannerJson);
+    const plannerData = await runPlannerAgent(openai, goal);
 
     onEvent({ agent: 'Planner', type: 'reasoning', reasoning: plannerData.reasoning });
     onEvent({
       agent: 'Planner',
       type: 'token',
-      token: `Topic: ${plannerData.topicTitle}\nAudience: ${plannerData.targetAudience}\nCore Angle: ${plannerData.coreAngle}\nTask breakdown generated.\n`,
+      token: `Topic: ${plannerData.topicTitle}\nAudience: ${plannerData.targetAudience}\nCore Angle: ${plannerData.coreAngle}\nTask breakdown generated (${plannerData.tasks.length} sub-tasks).\n`,
     });
     onEvent({ agent: 'Planner', type: 'status', status: 'done' });
 
     // 2. RESEARCHER
     onEvent({ agent: 'Researcher', type: 'status', status: 'running' });
-    onEvent({ agent: 'Researcher', type: 'token', token: '🔎 Searching trends, statistics, and industry data...\n' });
+    onEvent({ agent: 'Researcher', type: 'token', token: '🔎 Searching market trends, industry data, and engagement hooks...\n' });
 
-    const researcherPrompt = `Topic: "${plannerData.topicTitle}", Core Angle: "${plannerData.coreAngle}"\nSurface 3 insights, 3 trends, 2 data points, and 3 key hooks. Return JSON matching ResearcherOutputSchema.`;
-    const researcherRes = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are the Market Trends Researcher Agent for CreatorOS.' },
-        { role: 'user', content: researcherPrompt },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const researcherJson = JSON.parse(researcherRes.choices[0]?.message?.content || '{}');
-    const researcherData = ResearcherOutputSchema.parse(researcherJson);
+    const researcherData = await runResearcherAgent(openai, plannerData.topicTitle, plannerData.coreAngle);
 
     onEvent({ agent: 'Researcher', type: 'reasoning', reasoning: researcherData.reasoning });
     onEvent({
@@ -78,20 +54,12 @@ export async function runAgentPipelineStream(
     onEvent({ agent: 'Writer', type: 'status', status: 'running' });
     onEvent({ agent: 'Writer', type: 'token', token: '✍️ Drafting LinkedIn post, X thread, and blog outline...\n' });
 
-    const writerPrompt = `Topic: "${plannerData.topicTitle}", Insights: ${JSON.stringify(
-      researcherData.insights
-    )}, Data Points: ${JSON.stringify(researcherData.dataPoints)}\nDraft a LinkedIn post, X thread (5-7 tweets), and structured blog outline. Return JSON matching WriterOutputSchema.`;
-    const writerRes = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are the Multi-Format Copywriter Agent for CreatorOS.' },
-        { role: 'user', content: writerPrompt },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const writerJson = JSON.parse(writerRes.choices[0]?.message?.content || '{}');
-    const writerData = WriterOutputSchema.parse(writerJson);
+    const writerData = await runWriterAgent(
+      openai,
+      plannerData.topicTitle,
+      researcherData.insights,
+      researcherData.dataPoints
+    );
 
     onEvent({ agent: 'Writer', type: 'reasoning', reasoning: writerData.reasoning });
     onEvent({
@@ -105,18 +73,11 @@ export async function runAgentPipelineStream(
     onEvent({ agent: 'Reviewer', type: 'status', status: 'running' });
     onEvent({ agent: 'Reviewer', type: 'token', token: '⚖️ Evaluating hook strength, clarity, readability, and virality...\n' });
 
-    const reviewerPrompt = `Evaluate this LinkedIn post: "${writerData.linkedinDraft}" and X thread: "${writerData.twitterThreadDraft.join(' | ')}". Return JSON matching ReviewerOutputSchema.`;
-    const reviewerRes = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are the Quality & Engagement Critic Agent for CreatorOS.' },
-        { role: 'user', content: reviewerPrompt },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const reviewerJson = JSON.parse(reviewerRes.choices[0]?.message?.content || '{}');
-    const reviewerData = ReviewerOutputSchema.parse(reviewerJson);
+    const reviewerData = await runReviewerAgent(
+      openai,
+      writerData.linkedinDraft,
+      writerData.twitterThreadDraft
+    );
 
     onEvent({ agent: 'Reviewer', type: 'reasoning', reasoning: reviewerData.reasoning });
     onEvent({
@@ -130,20 +91,12 @@ export async function runAgentPipelineStream(
     onEvent({ agent: 'Improver', type: 'status', status: 'running' });
     onEvent({ agent: 'Improver', type: 'token', token: '⚡ Applying reviewer critique to polish and elevate output...\n' });
 
-    const improverPrompt = `Original LinkedIn: "${writerData.linkedinDraft}"\nOriginal Tweets: ${JSON.stringify(
-      writerData.twitterThreadDraft
-    )}\nReviewer Fixes: ${JSON.stringify(reviewerData.actionableFixes)}\nApply all fixes to produce improved LinkedIn post, X thread, and blog outline. Return JSON matching ImproverOutputSchema.`;
-    const improverRes = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are the Content Polish Engine Agent for CreatorOS.' },
-        { role: 'user', content: improverPrompt },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const improverJson = JSON.parse(improverRes.choices[0]?.message?.content || '{}');
-    const improverData = ImproverOutputSchema.parse(improverJson);
+    const improverData = await runImproverAgent(
+      openai,
+      writerData.linkedinDraft,
+      writerData.twitterThreadDraft,
+      reviewerData.actionableFixes
+    );
 
     onEvent({ agent: 'Improver', type: 'reasoning', reasoning: improverData.reasoning });
     onEvent({
@@ -155,20 +108,13 @@ export async function runAgentPipelineStream(
 
     // 6. PUBLISHER
     onEvent({ agent: 'Publisher', type: 'status', status: 'running' });
-    onEvent({ agent: 'Publisher', type: 'token', token: '🎨 Generating image prompts, hashtag stack, and final package...\n' });
+    onEvent({ agent: 'Publisher', type: 'token', token: '🎨 Generating Midjourney image prompt, hashtag stack, and final package...\n' });
 
-    const publisherPrompt = `Polished LinkedIn: "${improverData.improvedLinkedinPost}"\nGenerate final title, summary, 8 hashtags, Midjourney image prompt, and checklist. Return JSON matching PublisherOutputSchema.`;
-    const publisherRes = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are the Asset & Hashtag Packager Agent for CreatorOS.' },
-        { role: 'user', content: publisherPrompt },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const publisherJson = JSON.parse(publisherRes.choices[0]?.message?.content || '{}');
-    const publisherData = PublisherOutputSchema.parse(publisherJson);
+    const publisherData = await runPublisherAgent(
+      openai,
+      improverData.improvedLinkedinPost,
+      plannerData.topicTitle
+    );
 
     onEvent({ agent: 'Publisher', type: 'reasoning', reasoning: publisherData.reasoning });
     onEvent({
@@ -230,12 +176,12 @@ async function runMockPipelineStream(
 
     for (const line of lines) {
       onEvent({ agent, type: 'token', token: line + '\n' });
-      await delay(120);
+      await delay(100);
     }
 
     onEvent({ agent, type: 'reasoning', reasoning });
     onEvent({ agent, type: 'status', status: 'done' });
-    await delay(200);
+    await delay(150);
   }
 
   onEvent({
