@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAgent } from '@/lib/agentMemory';
+import { insertPersonaToDB } from '@/lib/db';
+import { runCycle } from '@/lib/cycle';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -7,15 +8,30 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const persona = body.persona || {};
+    const personaData = body.persona || {};
 
-    const name = persona.name || 'Ada';
-    const domain = persona.domain || 'AI Security';
+    const name = personaData.name || 'Ada';
+    const domain = personaData.domain || 'AI Security';
+    const voice_description = personaData.voice_description || `Authoritative ${domain} expert persona with sharp technical insight.`;
+    const editorial_criteria = personaData.editorial_criteria || [
+      `Must reveal high-signal technical depth in ${domain}.`,
+      'Must offer actionable insights for engineers.',
+      'Reject generic marketing hype or clickbait.',
+    ];
 
-    const agent = createAgent(name, domain);
+    // Insert persona into DB
+    const persona = await insertPersonaToDB({
+      name,
+      domain,
+      voice_description,
+      editorial_criteria,
+    });
+
+    // Run initial autonomous cycle synchronously on init so the feed has an immediate post ready
+    await runCycle(persona.agentId);
 
     return NextResponse.json({
-      agentId: agent.agentId,
+      agentId: persona.agentId,
     });
   } catch (error: any) {
     return NextResponse.json(
