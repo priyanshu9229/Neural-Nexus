@@ -6,11 +6,14 @@ import { AgentPipeline } from '@/components/agents/AgentPipeline';
 import { AgentLiveFeed } from '@/components/agents/AgentLiveFeed';
 import { OutputWorkspace } from '@/components/output/OutputWorkspace';
 import { PresetGoals } from '@/components/studio/PresetGoals';
-import { Sparkles, Play, RefreshCw, Clock, Bot, AlertCircle } from 'lucide-react';
+import { AutonomousFeedDashboard } from '@/components/autonomous/AutonomousFeedDashboard';
+import { Sparkles, Play, RefreshCw, Clock, AlertCircle, Bot, Radio, Zap } from 'lucide-react';
 import { StreamEvent } from '@/types';
 import { formatTime } from '@/lib/utils';
 
 export default function StudioPage() {
+  const [activeTab, setActiveTab] = useState<'autonomous' | 'interactive'>('autonomous');
+
   const {
     goal,
     setGoal,
@@ -29,7 +32,6 @@ export default function StudioPage() {
 
   const [inputError, setInputError] = useState('');
 
-  // Handle pipeline timer tick
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (pipelineState === 'running') {
@@ -114,7 +116,7 @@ export default function StudioPage() {
 
   return (
     <div className="space-y-8 py-4">
-      {/* Studio Header */}
+      {/* Mode Navigation Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div>
           <div className="flex items-center gap-2">
@@ -122,85 +124,98 @@ export default function StudioPage() {
               CreatorOS <span className="gradient-text">Studio</span>
             </h1>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
-              Autonomous Mode
+              Pro Persona Edition
             </span>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            Specify your content goal below. 6 AI agents will autonomously plan, research, draft, critique, and package your deliverables.
+            Autonomous AI Persona engine & multi-agent campaign studio.
           </p>
         </div>
 
-        {pipelineState !== 'idle' && (
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-gray-300">
-              <Clock className="w-3.5 h-3.5 text-purple-400 animate-spin" style={{ animationDuration: '6s' }} />
-              <span>Elapsed: {formatTime(elapsedTime)}</span>
-            </div>
-            <button
-              onClick={resetPipeline}
-              className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 transition-all"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
-              Reset Studio
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Goal Input Section */}
-      <div className="rounded-3xl p-6 glass-panel border border-purple-500/30 space-y-4 shadow-2xl relative overflow-hidden">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-mono uppercase tracking-wider text-purple-300 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            Define Content Objective
-          </label>
-          <span className="text-[11px] font-mono text-gray-500">Single prompt triggers 6 agents</span>
-        </div>
-
-        <div className="space-y-2">
-          <textarea
-            value={goal}
-            onChange={(e) => {
-              setGoal(e.target.value);
-              if (inputError) setInputError('');
-            }}
-            placeholder="e.g. Create LinkedIn content about AI in healthcare..."
-            rows={3}
-            disabled={pipelineState === 'running'}
-            className="w-full bg-[#090A12] border border-white/10 focus:border-purple-500 rounded-2xl p-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all resize-none font-sans disabled:opacity-50"
-          />
-
-          {inputError && (
-            <p className="text-xs text-rose-400 flex items-center gap-1.5 font-mono">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {inputError}
-            </p>
-          )}
-        </div>
-
-        {/* Action Controls & Presets */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-          <PresetGoals onSelectGoal={(selectedGoal) => setGoal(selectedGoal)} />
+        <div className="flex items-center gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl text-xs font-mono">
+          <button
+            onClick={() => setActiveTab('autonomous')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
+              activeTab === 'autonomous'
+                ? 'bg-purple-600 text-white font-semibold shadow-md shadow-purple-600/30'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            Autonomous Feed Engine
+          </button>
 
           <button
-            onClick={handleLaunch}
-            disabled={pipelineState === 'running'}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-sm shadow-xl shadow-purple-500/25 flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 shrink-0"
+            onClick={() => setActiveTab('interactive')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all ${
+              activeTab === 'interactive'
+                ? 'bg-purple-600 text-white font-semibold shadow-md shadow-purple-600/30'
+                : 'text-gray-400 hover:text-white'
+            }`}
           >
-            <Play className={`w-4 h-4 fill-current ${pipelineState === 'running' ? 'animate-spin' : ''}`} />
-            <span>{pipelineState === 'running' ? 'Agents Operating...' : 'Launch Agent Pipeline'}</span>
+            <Zap className="w-3.5 h-3.5 text-yellow-300" />
+            Interactive Campaign Studio
           </button>
         </div>
       </div>
 
-      {/* Autonomous Pipeline Stepper */}
-      <AgentPipeline />
+      {activeTab === 'autonomous' ? (
+        <AutonomousFeedDashboard />
+      ) : (
+        <div className="space-y-8">
+          {/* Goal Input Section */}
+          <div className="rounded-3xl p-6 glass-panel border border-purple-500/30 space-y-4 shadow-2xl relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-mono uppercase tracking-wider text-purple-300 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                Define Content Objective
+              </label>
+              <span className="text-[11px] font-mono text-gray-500">Single prompt triggers 6 agents</span>
+            </div>
 
-      {/* Terminal Live Feed & Workspace */}
-      <div className="grid grid-cols-1 gap-6">
-        <AgentLiveFeed />
-        <OutputWorkspace />
-      </div>
+            <div className="space-y-2">
+              <textarea
+                value={goal}
+                onChange={(e) => {
+                  setGoal(e.target.value);
+                  if (inputError) setInputError('');
+                }}
+                placeholder="e.g. Create LinkedIn content about AI in healthcare..."
+                rows={3}
+                disabled={pipelineState === 'running'}
+                className="w-full bg-[#090A12] border border-white/10 focus:border-purple-500 rounded-2xl p-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all resize-none font-sans disabled:opacity-50"
+              />
+
+              {inputError && (
+                <p className="text-xs text-rose-400 flex items-center gap-1.5 font-mono">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {inputError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+              <PresetGoals onSelectGoal={(selectedGoal) => setGoal(selectedGoal)} />
+
+              <button
+                onClick={handleLaunch}
+                disabled={pipelineState === 'running'}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-sm shadow-xl shadow-purple-500/25 flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shrink-0"
+              >
+                <Play className={`w-4 h-4 fill-current ${pipelineState === 'running' ? 'animate-spin' : ''}`} />
+                <span>{pipelineState === 'running' ? 'Agents Operating...' : 'Launch Agent Pipeline'}</span>
+              </button>
+            </div>
+          </div>
+
+          <AgentPipeline />
+
+          <div className="grid grid-cols-1 gap-6">
+            <AgentLiveFeed />
+            <OutputWorkspace />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
