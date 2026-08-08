@@ -116,7 +116,7 @@ export default function StudioPage() {
 
   return (
     <div className="space-y-8 py-4">
-      {/* Studio Navigation & Mode Selector */}
+      {/* Studio Header & Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div>
           <div className="flex items-center gap-2">
@@ -125,7 +125,7 @@ export default function StudioPage() {
             </h1>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            Choose between live autonomous AI persona feeds or generating custom multi-platform campaigns.
+            Autonomous AI persona feeds and custom multi-platform campaign creation.
           </p>
         </div>
 
@@ -139,7 +139,7 @@ export default function StudioPage() {
             }`}
           >
             <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-            Autonomous Persona Feed
+            Autonomous AI Feed
           </button>
 
           <button
@@ -151,7 +151,7 @@ export default function StudioPage() {
             }`}
           >
             <Zap className="w-3.5 h-3.5 text-yellow-300" />
-            Custom Campaign Studio
+            Campaign Generator
           </button>
         </div>
       </div>
@@ -200,7 +200,7 @@ export default function StudioPage() {
                 className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-sm shadow-xl shadow-purple-500/25 flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shrink-0"
               >
                 <Play className={`w-4 h-4 fill-current ${pipelineState === 'running' ? 'animate-spin' : ''}`} />
-                <span>{pipelineState === 'running' ? 'Agents Operating...' : 'Launch Agent Pipeline'}</span>
+                <span>{pipelineState === 'running' ? 'Agents Operating...' : 'Launch Campaign Agents'}</span>
               </button>
             </div>
           </div>

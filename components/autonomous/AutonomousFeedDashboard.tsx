@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bot, Sparkles, RefreshCw, Check, ExternalLink, Activity, ChevronDown, ChevronUp, Terminal, Copy } from 'lucide-react';
+import { Bot, Sparkles, RefreshCw, Check, ExternalLink, Activity, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface FeedPost {
@@ -26,10 +26,6 @@ export function AutonomousFeedDashboard() {
   const [isInitializing, setIsInitializing] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [expandedRationale, setExpandedRationale] = useState<Record<string, boolean>>({});
-  const [showDeveloperDocs, setShowDeveloperDocs] = useState(false);
-
-  const [copiedCurlInit, setCopiedCurlInit] = useState(false);
-  const [copiedCurlFeed, setCopiedCurlFeed] = useState(false);
 
   const initializePersona = async (p = selectedPersona) => {
     setIsInitializing(true);
@@ -72,7 +68,7 @@ export function AutonomousFeedDashboard() {
     }
   };
 
-  // Poll feed automatically
+  // Poll feed automatically every 12s
   useEffect(() => {
     if (!agentId) return;
     const interval = setInterval(() => fetchFeed(agentId), 12000);
@@ -89,9 +85,6 @@ export function AutonomousFeedDashboard() {
   const toggleRationale = (postId: string) => {
     setExpandedRationale((prev) => ({ ...prev, [postId]: !prev[postId] }));
   };
-
-  const curlInit = `curl -X POST http://localhost:3000/api/agent/init -H "Content-Type: application/json" -d '{"persona": {"name": "${selectedPersona.n}", "domain": "${selectedPersona.d}"}}'`;
-  const curlFeed = `curl http://localhost:3000/api/agent/feed?agentId=${agentId || 'agent-id'}`;
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -201,7 +194,9 @@ export function AutonomousFeedDashboard() {
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       <span className="font-semibold text-white">{selectedPersona.n}</span>
                       <span className="text-gray-500 font-mono">•</span>
-                      <span className="text-gray-400 font-mono text-[11px]">{new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className="text-gray-400 font-mono text-[11px]">
+                        {new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
 
                     {post.sources && post.sources[0] && (
@@ -211,7 +206,7 @@ export function AutonomousFeedDashboard() {
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-[11px] font-mono text-purple-400 hover:text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20 transition-all"
                       >
-                        <span>View Live Source</span>
+                        <span>View Source</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     )}
@@ -252,71 +247,6 @@ export function AutonomousFeedDashboard() {
             })}
           </div>
         )}
-      </div>
-
-      {/* Optional Collapsible Developer API Drawer for Evaluators */}
-      <div className="border border-white/10 rounded-2xl glass-panel overflow-hidden">
-        <button
-          onClick={() => setShowDeveloperDocs(!showDeveloperDocs)}
-          className="w-full px-5 py-3 flex items-center justify-between text-xs font-mono text-gray-400 hover:text-white bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-purple-400" />
-            Developer & Hackathon API Endpoints (POST /init & GET /feed)
-          </span>
-          {showDeveloperDocs ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-
-        <AnimatePresence>
-          {showDeveloperDocs && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="p-5 border-t border-white/10 space-y-3 bg-black/60 font-mono text-xs text-gray-300"
-            >
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1">
-                  <span>1. Initialize Agent (POST /api/agent/init)</span>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(curlInit);
-                      setCopiedCurlInit(true);
-                      setTimeout(() => setCopiedCurlInit(false), 2000);
-                    }}
-                    className="text-purple-400 hover:underline flex items-center gap-1"
-                  >
-                    {copiedCurlInit ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedCurlInit ? 'Copied' : 'Copy cURL'}</span>
-                  </button>
-                </div>
-                <pre className="p-3 rounded-xl bg-[#06070D] border border-white/10 text-gray-300 overflow-x-auto text-[11px]">
-                  {curlInit}
-                </pre>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1">
-                  <span>2. Retrieve Autonomous Feed (GET /api/agent/feed?agentId=...)</span>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(curlFeed);
-                      setCopiedCurlFeed(true);
-                      setTimeout(() => setCopiedCurlFeed(false), 2000);
-                    }}
-                    className="text-purple-400 hover:underline flex items-center gap-1"
-                  >
-                    {copiedCurlFeed ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedCurlFeed ? 'Copied' : 'Copy cURL'}</span>
-                  </button>
-                </div>
-                <pre className="p-3 rounded-xl bg-[#06070D] border border-white/10 text-gray-300 overflow-x-auto text-[11px]">
-                  {curlFeed}
-                </pre>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );
