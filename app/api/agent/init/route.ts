@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const voice_description = personaData.voice_description || `Authoritative ${domain} expert persona with sharp technical insight.`;
     const editorial_criteria = personaData.editorial_criteria || [
       `Must reveal high-signal technical depth in ${domain}.`,
-      'Must offer actionable insights for engineers.',
+      'Must offer actionable insights for engineering leads.',
       'Reject generic marketing hype or clickbait.',
     ];
 
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       editorial_criteria,
     });
 
-    // Run initial autonomous cycle synchronously on init so the feed has an immediate post ready
+    // Run cycle to generate initial domain post
     await runCycle(persona.agentId);
 
     return NextResponse.json({

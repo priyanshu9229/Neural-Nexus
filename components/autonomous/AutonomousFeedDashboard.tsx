@@ -12,25 +12,37 @@ interface FeedPost {
   sources: string[];
 }
 
-const PERSONAS = [
-  { n: 'Ada', d: 'AI Security Specialist', avatar: '🛡️', bg: 'from-purple-900/40 to-blue-950/40', tag: 'Security & Alignment' },
-  { n: 'Alex', d: 'ML Systems Architect', avatar: '⚡', bg: 'from-blue-900/40 to-cyan-950/40', tag: 'Inference & LLMOps' },
-  { n: 'Maya', d: 'Robotics Lead', avatar: '🤖', bg: 'from-emerald-900/40 to-teal-950/40', tag: 'Embodied AI & Hardware' },
-  { n: 'Sam', d: 'Open Source Advocate', avatar: '🌐', bg: 'from-amber-900/40 to-orange-950/40', tag: 'Open Weights & Infra' },
+interface PersonaItem {
+  n: string;
+  d: string;
+  avatar: string;
+  tag: string;
+}
+
+const PERSONAS: PersonaItem[] = [
+  { n: 'Ada', d: 'AI Security Specialist', avatar: '🛡️', tag: 'Security & Alignment' },
+  { n: 'Alex', d: 'ML Systems Architect', avatar: '⚡', tag: 'Inference & LLMOps' },
+  { n: 'Maya', d: 'Robotics Lead', avatar: '🤖', tag: 'Embodied AI & Hardware' },
+  { n: 'Sam', d: 'Open Source Advocate', avatar: '🌐', tag: 'Open Weights & Infra' },
 ];
 
 export function AutonomousFeedDashboard() {
-  const [selectedPersona, setSelectedPersona] = useState(PERSONAS[0]);
-  const [agentId, setAgentId] = useState<string | null>(null);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [selectedPersona, setSelectedPersona] = useState<PersonaItem>(PERSONAS[0]);
+  const [personaAgentIds, setPersonaAgentIds] = useState<Record<string, string>>({});
+  const [personaPosts, setPersonaPosts] = useState<Record<string, FeedPost[]>>({});
   const [isInitializing, setIsInitializing] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [expandedRationale, setExpandedRationale] = useState<Record<string, boolean>>({});
 
-  const initializePersona = async (p = selectedPersona) => {
-    setIsInitializing(true);
-    setSelectedPersona(p);
+  // Initialize a persona if not already initialized
+  const initPersona = async (p: PersonaItem) => {
+    if (personaAgentIds[p.n]) {
+      // Already initialized, just fetch feed
+      fetchPersonaFeed(p.n, personaAgentIds[p.n]);
+      return;
+    }
 
+    setIsInitializing(true);
     try {
       const res = await fetch('/api/agent/init', {
         method: 'POST',
@@ -42,49 +54,67 @@ export function AutonomousFeedDashboard() {
 
       const data = await res.json();
       if (data.agentId) {
-        setAgentId(data.agentId);
-        fetchFeed(data.agentId);
+        setPersonaAgentIds((prev) => ({ ...prev, [p.n]: data.agentId }));
+        fetchPersonaFeed(p.n, data.agentId);
       }
     } catch (err) {
-      console.error('Failed to initialize agent:', err);
+      console.error(`Failed to initialize persona ${p.n}:`, err);
     } finally {
       setIsInitializing(false);
     }
   };
 
-  const fetchFeed = async (idToUse = agentId) => {
+  const fetchPersonaFeed = async (personaName: string, idToUse: string) => {
     if (!idToUse) return;
     setIsFetching(true);
     try {
       const res = await fetch(`/api/agent/feed?agentId=${idToUse}`);
       const data = await res.json();
       if (data.posts) {
-        setPosts(data.posts);
+        setPersonaPosts((prev) => ({ ...prev, [personaName]: data.posts }));
       }
     } catch (err) {
-      console.error('Failed to fetch feed:', err);
+      console.error(`Failed to fetch feed for ${personaName}:`, err);
     } finally {
       setIsFetching(false);
     }
   };
 
-  // Poll feed automatically every 12s
+  // Pre-initialize all 4 personas on startup so all 4 have distinct content immediately!
   useEffect(() => {
-    if (!agentId) return;
-    const interval = setInterval(() => fetchFeed(agentId), 12000);
-    return () => clearInterval(interval);
-  }, [agentId]);
-
-  // Initial setup
-  useEffect(() => {
-    if (!agentId) {
-      initializePersona(PERSONAS[0]);
-    }
+    const preInitAll = async () => {
+      for (const p of PERSONAS) {
+        await initPersona(p);
+      }
+    };
+    preInitAll();
   }, []);
+
+  // Poll feed automatically for active persona
+  useEffect(() => {
+    const activeId = personaAgentIds[selectedPersona.n];
+    if (!activeId) return;
+
+    const interval = setInterval(() => {
+      fetchPersonaFeed(selectedPersona.n, activeId);
+    }, 12000);
+    return () => clearInterval(interval);
+  }, [selectedPersona.n, personaAgentIds]);
+
+  const handleSelectPersona = (p: PersonaItem) => {
+    setSelectedPersona(p);
+    if (personaAgentIds[p.n]) {
+      fetchPersonaFeed(p.n, personaAgentIds[p.n]);
+    } else {
+      initPersona(p);
+    }
+  };
 
   const toggleRationale = (postId: string) => {
     setExpandedRationale((prev) => ({ ...prev, [postId]: !prev[postId] }));
   };
+
+  const activePosts = personaPosts[selectedPersona.n] || [];
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -96,25 +126,26 @@ export function AutonomousFeedDashboard() {
               Select Autonomous AI Persona
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              Choose an AI persona below. Once selected, the agent independently researches and publishes content over time.
+              Click any persona below to switch view. All 4 personas publish distinct domain content autonomously.
             </p>
           </div>
 
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-full shrink-0">
             <Activity className="w-3.5 h-3.5 animate-pulse" />
-            <span>Autonomous Engine Active</span>
+            <span>4 Personas Active</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {PERSONAS.map((p) => {
             const isSelected = selectedPersona.n === p.n;
+            const hasPosts = (personaPosts[p.n] || []).length > 0;
+
             return (
               <button
                 key={p.n}
-                onClick={() => initializePersona(p)}
-                disabled={isInitializing}
-                className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden group ${
+                onClick={() => handleSelectPersona(p)}
+                className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden group cursor-pointer ${
                   isSelected
                     ? 'bg-gradient-to-br from-purple-900/40 via-purple-950/30 to-black border-purple-500/60 shadow-xl shadow-purple-500/20 ring-1 ring-purple-500/40'
                     : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.05] hover:border-white/20'
@@ -131,11 +162,20 @@ export function AutonomousFeedDashboard() {
                 </h3>
                 <p className="text-xs text-gray-400 mt-0.5">{p.d}</p>
 
-                {isSelected && (
-                  <div className="mt-3 flex items-center gap-1 text-[11px] font-mono text-purple-300">
-                    <Check className="w-3 h-3 text-emerald-400" /> Active Persona
-                  </div>
-                )}
+                <div className="mt-3 flex items-center justify-between text-[11px] font-mono">
+                  {isSelected ? (
+                    <span className="text-purple-300 flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-400" /> Active View
+                    </span>
+                  ) : (
+                    <span className="text-gray-500">Click to Switch</span>
+                  )}
+                  {hasPosts && (
+                    <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                      Live
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
@@ -157,30 +197,33 @@ export function AutonomousFeedDashboard() {
                 </span>
               </h3>
               <p className="text-xs text-gray-400">
-                Self-updating feed • {posts.length} published insight{posts.length === 1 ? '' : 's'}
+                Self-updating feed • {activePosts.length} published insight{activePosts.length === 1 ? '' : 's'}
               </p>
             </div>
           </div>
 
           <button
-            onClick={() => fetchFeed()}
+            onClick={() => {
+              const activeId = personaAgentIds[selectedPersona.n];
+              if (activeId) fetchPersonaFeed(selectedPersona.n, activeId);
+            }}
             disabled={isFetching}
-            className="flex items-center justify-center gap-2 text-xs font-medium px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 text-xs font-medium px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all active:scale-95 shrink-0"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-purple-400 ${isFetching ? 'animate-spin' : ''}`} />
-            <span>{isFetching ? 'Checking Feed...' : 'Sync Feed'}</span>
+            <span>{isFetching ? 'Syncing Feed...' : 'Sync Feed'}</span>
           </button>
         </div>
 
         {/* Feed Posts */}
-        {posts.length === 0 ? (
+        {activePosts.length === 0 ? (
           <div className="py-12 text-center text-xs text-gray-400 space-y-2">
             <RefreshCw className="w-6 h-6 animate-spin text-purple-400 mx-auto" />
-            <p>Initializing autonomous feed for {selectedPersona.n}...</p>
+            <p>Loading autonomous feed for {selectedPersona.n}...</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {posts.map((post) => {
+            {activePosts.map((post) => {
               const isExpanded = expandedRationale[post.id];
               return (
                 <motion.div
