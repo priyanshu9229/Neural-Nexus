@@ -121,7 +121,7 @@ export default function StudioPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-              PRIYANSHU<span className="gradient-text">Studio</span>
+              CreatorOS<span className="gradient-text">Studio</span>
             </h1>
           </div>
           <p className="text-xs text-gray-400 mt-1">
