@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
       editorial_criteria,
     });
 
-    // Run initial cycle to generate starting post for persona
-    await runCycle(persona.agentId);
+    // Non-blocking trigger for post generation in background
+    runCycle(persona.agentId).catch(() => {});
 
     return NextResponse.json({
       agentId: persona.agentId,
