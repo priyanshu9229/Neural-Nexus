@@ -9,24 +9,24 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const agentId = searchParams.get('agentId');
+    const refresh = searchParams.get('refresh') === 'true';
 
     if (!agentId) {
       return NextResponse.json({ error: 'agentId parameter is required' }, { status: 400 });
     }
 
-    // 1. Check if persona exists in DB
     const persona = await getPersonaFromDB(agentId);
-
     if (!persona) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
-    // 2. Read from posts table
     let dbPosts = await getPostsFromDB(agentId);
 
-    // If no posts exist yet for this agent, run a cycle to generate the initial post
-    if (dbPosts.length === 0) {
-      await runCycle(agentId);
+    // Run a new cycle if: no posts exist yet, OR user explicitly clicked Sync Feed
+    if (dbPosts.length === 0 || refresh) {
+      runCycle(agentId).catch((err) => console.error('[Feed] Cycle error:', err));
+      // Give the cycle a moment to write the post, then re-read
+      await new Promise((r) => setTimeout(r, 800));
       dbPosts = await getPostsFromDB(agentId);
     }
 

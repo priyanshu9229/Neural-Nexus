@@ -60,11 +60,14 @@ export function AutonomousFeedDashboard() {
     return null;
   };
 
-  const fetchPersonaFeed = async (personaName: string, idToUse: string) => {
+  const fetchPersonaFeed = async (personaName: string, idToUse: string, refresh = false) => {
     if (!idToUse) return;
     setIsFetching(true);
     try {
-      const res = await fetch(`/api/agent/feed?agentId=${idToUse}`);
+      const url = refresh
+        ? `/api/agent/feed?agentId=${idToUse}&refresh=true`
+        : `/api/agent/feed?agentId=${idToUse}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.posts) {
         globalPersonaPosts[personaName] = data.posts;
@@ -208,7 +211,7 @@ export function AutonomousFeedDashboard() {
           <button
             onClick={() => {
               const activeId = personaAgentIds[selectedPersona.n] || globalAgentIds[selectedPersona.n];
-              if (activeId) fetchPersonaFeed(selectedPersona.n, activeId);
+              if (activeId) fetchPersonaFeed(selectedPersona.n, activeId, true);
             }}
             disabled={isFetching}
             className="flex items-center justify-center gap-2 text-xs font-medium px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all active:scale-95 shrink-0"
