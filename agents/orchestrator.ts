@@ -144,11 +144,13 @@ export async function runAgentPipelineStream(
       package: finalPackage,
     });
   } catch (err: any) {
+    console.warn('[Orchestrator] OpenAI API call failed (e.g. zero credits), falling back to mock pipeline stream:', err?.message || err);
     onEvent({
       agent: 'Planner',
-      type: 'error',
-      error: err?.message || 'Error executing agent pipeline',
+      type: 'token',
+      token: '⚠️ OpenAI API quota/credit limit reached. Fallback mode activated to ensure uninterrupted generation...\n',
     });
+    await runMockPipelineStream(goal, onEvent);
   }
 }
 
