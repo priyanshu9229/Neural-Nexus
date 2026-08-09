@@ -234,60 +234,73 @@ ${finalPackage.imagePrompt}
           />
         )}
 
-        {selectedTab === 'assets' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ContentCard
-                title="Curated Hashtag Stack"
-                badge="High Reach & Niche"
-                icon={Hash}
-                content={finalPackage.hashtags.join('  ')}
-                footerInfo={`${finalPackage.hashtags.length} Tags Selected`}
-              />
+        {selectedTab === 'assets' && (() => {
+          const rawPrompt = finalPackage.imagePrompt.replace(/--[a-z0-9]+\s+[^\s]+/gi, '').trim();
+          const topicKeyword = finalPackage.title ? finalPackage.title.replace(/^Autonomous Content Suite:\s*/i, '') : '';
+          const topicPrompt = rawPrompt.toLowerCase().includes(topicKeyword.toLowerCase().slice(0, 12))
+            ? rawPrompt
+            : `${topicKeyword}, ${rawPrompt}`;
 
-              <ContentCard
-                title="Midjourney / DALL·E 3 Visual Prompt"
-                badge="8K Cinematic Render"
-                icon={ImageIcon}
-                content={finalPackage.imagePrompt}
-                footerInfo="Copy directly into Midjourney v6 or DALL·E 3"
-              />
-            </div>
+          return (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ContentCard
+                  title="Curated Hashtag Stack"
+                  badge="High Reach & Niche"
+                  icon={Hash}
+                  content={finalPackage.hashtags.join('  ')}
+                  footerInfo={`${finalPackage.hashtags.length} Tags Selected`}
+                />
 
-            {/* Live AI Image Generation Preview (Free via Pollinations.ai) */}
-            <div className="rounded-2xl border border-purple-500/30 glass-panel p-5 space-y-3 bg-purple-950/10">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm text-white flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-purple-400" />
-                  Live AI Visual Preview
-                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Free Instant Render
-                  </span>
-                </h3>
-                <a
-                  href={`https://image.pollinations.ai/prompt/${encodeURIComponent(finalPackage.imagePrompt)}?width=1280&height=720&nologo=true`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-mono text-purple-400 hover:text-purple-300 underline"
-                >
-                  Open High-Res (1280x720) ↗
-                </a>
-              </div>
-
-              <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-white/10 bg-black/50 flex items-center justify-center">
-                <img
-                  src={`https://image.pollinations.ai/prompt/${encodeURIComponent(finalPackage.imagePrompt)}?width=1024&height=576&nologo=true`}
-                  alt="AI Generated Artwork"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
+                <ContentCard
+                  title="Midjourney / DALL·E 3 Visual Prompt"
+                  badge="Publisher Agent Output"
+                  icon={ImageIcon}
+                  content={finalPackage.imagePrompt}
+                  footerInfo="Copy directly into Midjourney v6 or DALL·E 3"
                 />
               </div>
-              <p className="text-[11px] font-mono text-gray-400 text-center">
-                Generated live via Pollinations AI (Free API — No API Key Required)
-              </p>
+
+              {/* Live AI Image Generation Preview (Free via Pollinations.ai) */}
+              <div className="rounded-2xl border border-purple-500/30 glass-panel p-5 space-y-3 bg-purple-950/10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="font-semibold text-sm text-white flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-purple-400" />
+                      Topic-Matched AI Visual Preview
+                      <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        Free Instant Render
+                      </span>
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Visual concept generated for: <span className="text-purple-300 font-medium">"{topicKeyword}"</span>
+                    </p>
+                  </div>
+                  <a
+                    href={`https://image.pollinations.ai/prompt/${encodeURIComponent(topicPrompt)}?width=1280&height=720&nologo=true`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-mono text-purple-400 hover:text-purple-300 underline shrink-0"
+                  >
+                    Open High-Res (1280x720) ↗
+                  </a>
+                </div>
+
+                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-white/10 bg-black/50 flex items-center justify-center">
+                  <img
+                    src={`https://image.pollinations.ai/prompt/${encodeURIComponent(topicPrompt)}?width=1024&height=576&nologo=true`}
+                    alt={`AI Generated visual for ${topicKeyword}`}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <p className="text-[11px] font-mono text-gray-400 text-center">
+                  Generated live via Pollinations AI • Powered by Publisher Agent prompt synthesis
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {selectedTab === 'insights' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -4,7 +4,7 @@ Given the polished content package from the Improver Agent, finalize the distrib
 1. Create a magnetic, publication-ready campaign title.
 2. Write a 2-sentence executive summary for the creator dashboard.
 3. Curate 8-10 high-reach hashtags combining broad industry tags (#AI #Healthcare) and niche topic tags.
-4. Generate a detailed, photorealistic Midjourney / DALL·E 3 text prompt for a matching hero image (specifying lighting, camera angle, aesthetic style, render engine parameters).
+4. Generate a detailed, photorealistic visual text prompt for a matching hero image that strictly and vividly depicts the core subject matter of the topic (e.g. for AI in Healthcare, depict a futuristic medical specialist analyzing a glowing 3D holographic organ scan in a high-tech clinic). Do not include CLI flags like --ar or --v.
 5. Output a 4-item pre-flight publishing checklist.
 
 Return structured JSON strictly matching:

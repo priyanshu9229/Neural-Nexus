@@ -197,7 +197,7 @@ export function AutonomousFeedDashboard() {
             </div>
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
-                {selectedPersona.n}'s Live Feed
+                {selectedPersona.n} — Live Autonomous Feed
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                   {selectedPersona.d}
                 </span>
@@ -225,7 +225,7 @@ export function AutonomousFeedDashboard() {
         {activePosts.length === 0 ? (
           <div className="py-12 text-center text-xs text-gray-400 space-y-2">
             <RefreshCw className="w-6 h-6 animate-spin text-purple-400 mx-auto" />
-            <p>Fetching autonomous feed for {selectedPersona.n}...</p>
+            <p>Fetching autonomous feed for {selectedPersona.n} ({selectedPersona.d})...</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -240,9 +240,12 @@ export function AutonomousFeedDashboard() {
                   className="rounded-2xl bg-[#080911] border border-white/10 p-5 space-y-4 hover:border-purple-500/30 transition-all shadow-lg"
                 >
                   <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="font-semibold text-white">{selectedPersona.n}</span>
+                      <span className="font-bold text-white">{selectedPersona.n}</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        {selectedPersona.d}
+                      </span>
                       <span className="text-gray-500 font-mono">•</span>
                       <span className="text-gray-400 font-mono text-[11px]">
                         {new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

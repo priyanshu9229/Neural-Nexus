@@ -103,7 +103,7 @@ What's your team's biggest bottleneck right now? Drop a comment below 👇
     '#Leadership',
   ];
 
-  const imagePrompt = `Hyper-realistic 3D isometric render representing ${topic}, futuristic digital workspace glowing with cyan and neon purple glassmorphism nodes, volumetric cinematic studio lighting, Octane render 8K resolution, elegant dark background, ultra-detailed --ar 16:9 --v 6.0`;
+  const imagePrompt = `Photorealistic 3D cinematic visual conceptualizing ${topic}, highly detailed subject representation, volumetric studio lighting, Octane render 8K resolution, elegant dark background, ultra-detailed`;
 
   const finalPackage: ContentPackage = {
     title: `Autonomous Content Suite: ${topic}`,
