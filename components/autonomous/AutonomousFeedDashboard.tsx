@@ -143,8 +143,8 @@ export function AutonomousFeedDashboard() {
     if (!activeId) return;
 
     const interval = setInterval(() => {
-      fetchPersonaFeed(selectedPersona.n, activeId);
-    }, 12000);
+      fetchPersonaFeed(selectedPersona.n, activeId, true);
+    }, 25000);
     return () => clearInterval(interval);
   }, [selectedPersona.n, personaAgentIds]);
 
