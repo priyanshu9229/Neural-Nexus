@@ -3,12 +3,40 @@
 import { useEffect } from 'react';
 import { useCreatorStore } from '@/lib/store';
 import { OutputWorkspace } from '@/components/output/OutputWorkspace';
+import { generateMockContentPackage } from '@/agents/mockGenerator';
 import Link from 'next/link';
-import { Sparkles, ArrowLeft, Bot, FileCheck } from 'lucide-react';
+import { Sparkles, ArrowLeft, FileCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { AgentName } from '@/types';
 
 export default function ResultsPage() {
-  const { finalPackage, goal } = useCreatorStore();
+  const { finalPackage, goal, savedCampaigns, loadSavedCampaign, setFinalPackage, setGoal, completeAgent } = useCreatorStore();
+
+  useEffect(() => {
+    if (!finalPackage) {
+      if (savedCampaigns && savedCampaigns.length > 0) {
+        loadSavedCampaign(savedCampaigns[0].id);
+      } else {
+        const demoGoal = 'AI Autonomous Agent Systems 2026';
+        const mockData = generateMockContentPackage(demoGoal);
+        setGoal(demoGoal);
+        setFinalPackage(mockData.finalPackage);
+        
+        const agentMap: Record<AgentName, { output: string; reasoning: string }> = {
+          Planner: mockData.planner,
+          Researcher: mockData.researcher,
+          Writer: mockData.writer,
+          Reviewer: mockData.reviewer,
+          Improver: mockData.improver,
+          Publisher: mockData.publisher,
+        };
+
+        (Object.keys(agentMap) as AgentName[]).forEach((agent) => {
+          completeAgent(agent, agentMap[agent].output, agentMap[agent].reasoning);
+        });
+      }
+    }
+  }, [finalPackage, savedCampaigns, loadSavedCampaign, setFinalPackage, setGoal, completeAgent]);
 
   useEffect(() => {
     if (finalPackage) {
@@ -37,7 +65,7 @@ export default function ResultsPage() {
               Deliverables Package <FileCheck className="w-5 h-5 text-emerald-400" />
             </h1>
             <p className="text-xs text-gray-400 mt-0.5">
-              Goal: <span className="text-purple-300 italic">"{goal || 'AI in Healthcare'}"</span>
+              Goal: <span className="text-purple-300 italic">"{goal || 'AI Autonomous Agent Systems 2026'}"</span>
             </p>
           </div>
         </div>
@@ -51,25 +79,7 @@ export default function ResultsPage() {
         </Link>
       </div>
 
-      {finalPackage ? (
-        <OutputWorkspace />
-      ) : (
-        <div className="glass-panel rounded-3xl p-12 text-center max-w-xl mx-auto space-y-4 border border-white/10">
-          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mx-auto">
-            <Bot className="w-6 h-6" />
-          </div>
-          <h3 className="text-lg font-bold text-white">No Content Package Generated Yet</h3>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            Head over to the Studio, specify your content goal, and let the 6 autonomous agents build your complete deliverables package.
-          </p>
-          <Link
-            href="/studio"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold text-xs shadow-lg shadow-purple-500/25"
-          >
-            Open CreatorOS Studio
-          </Link>
-        </div>
-      )}
+      <OutputWorkspace />
     </div>
   );
 }

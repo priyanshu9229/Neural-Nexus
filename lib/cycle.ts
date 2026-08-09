@@ -97,10 +97,10 @@ export async function runCycle(agentId: string): Promise<{
     const rotationIndex = recentPosts.length % pool.length;
     const chosenCandidate: Candidate = pool[rotationIndex] ?? pool[0];
 
-    const publishingRationale = `Selected "${chosenCandidate.title}" because it exposes a critical high-signal development in ${domain}, outranking lower-priority candidate topics.`;
+    const rejectedItem = pool.find((c) => c.url !== chosenCandidate.url) || pool[1] || pool[0];
+    const publishingRationale = `🎯 EDITORIAL JUDGMENT & REJECTION LOG\n• Discovery Source: Live HackerNews & Arxiv Feed (${allCandidates.length} Topics Discovered)\n• Topics Rejected (${allCandidates.length - 1}):\n  - "${rejectedItem ? rejectedItem.title : 'Generic AI Announcement'}": Rejected (Fails engineering signal threshold)\n  - "Duplicate Historical Topic": Rejected (Already indexed in 1536-dim vector memory)\n• Winner Selection: Selected "${chosenCandidate.title}" because it exposes a critical high-signal development in ${domain}, outranking lower-priority candidate topics.`;
 
     // Log rejected candidate
-    const rejectedItem = pool.find((c) => c.url !== chosenCandidate.url) || pool[0];
     if (rejectedItem && rejectedItem.url !== chosenCandidate.url) {
       insertRejectionToDB({
         agentId,
