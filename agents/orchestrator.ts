@@ -9,7 +9,7 @@ import { runImproverAgent } from './improver';
 import { runPublisherAgent } from './publisher';
 
 const apiKey = process.env.OPENAI_API_KEY;
-const openai = apiKey ? new OpenAI({ apiKey }) : null;
+const openai = apiKey ? new OpenAI({ apiKey, maxRetries: 0, timeout: 2000 }) : null;
 
 export async function runAgentPipelineStream(
   goal: string,
@@ -178,12 +178,12 @@ async function runMockPipelineStream(
 
     for (const line of lines) {
       onEvent({ agent, type: 'token', token: line + '\n' });
-      await delay(100);
+      await delay(15);
     }
 
     onEvent({ agent, type: 'reasoning', reasoning });
     onEvent({ agent, type: 'status', status: 'done' });
-    await delay(150);
+    await delay(30);
   }
 
   onEvent({

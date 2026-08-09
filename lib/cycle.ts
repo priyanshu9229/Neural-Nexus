@@ -7,7 +7,8 @@ import {
 import OpenAI from 'openai';
 
 const apiKey = process.env.OPENAI_API_KEY;
-const openai = apiKey ? new OpenAI({ apiKey, maxRetries: 0, timeout: 5000 }) : null;
+// Fast 1.2s timeout with 0 retries for zero latency on production serverless functions
+const openai = apiKey ? new OpenAI({ apiKey, maxRetries: 0, timeout: 1200 }) : null;
 
 interface Candidate {
   title: string;
@@ -47,19 +48,19 @@ export async function runCycle(agentId: string): Promise<{
     const voice = persona.voice_description || `Authoritative ${persona.domain} expert persona with sharp technical insight.`;
     const domain = persona.domain;
 
-    // 2. DISCOVER: Try live HackerNews API first, then fall back to rotating static pool
+    // 2. DISCOVER: Try fast HackerNews fetch (800ms max total timeout), fall back instantly to rotating pool
     let liveCandidates: Candidate[] = [];
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3000);
+      const timer = setTimeout(() => controller.abort(), 800);
       const topIdsRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json', { signal: controller.signal });
       clearTimeout(timer);
       const topIds: number[] = await topIdsRes.json();
 
       const items = await Promise.allSettled(
-        topIds.slice(0, 20).map(async (id) => {
+        topIds.slice(0, 5).map(async (id) => {
           const controller2 = new AbortController();
-          const timer2 = setTimeout(() => controller2.abort(), 2000);
+          const timer2 = setTimeout(() => controller2.abort(), 600);
           const itemRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, { signal: controller2.signal });
           clearTimeout(timer2);
           const item = await itemRes.json();
@@ -75,16 +76,14 @@ export async function runCycle(agentId: string): Promise<{
         .map((r) => r.value)
         .filter((c): c is Candidate => c !== null);
     } catch (err) {
-      console.log('[Cycle] HackerNews fetch failed, using static pool');
+      // Fast fallback to pre-cached candidates
     }
 
     // Static fallback pool — large rotating set per domain
     const staticPool = getStaticCandidatePool(domain);
-
-    // Combine: live first, then static as extras
     const allCandidates: Candidate[] = [...liveCandidates, ...staticPool];
 
-    // 3. MEMORY CHECK: Get recently published source URLs to deduplicate reliably
+    // 3. MEMORY CHECK: Deduplicate against recently published URLs
     const recentPosts = await getPostsFromDB(agentId);
     const publishedUrls = new Set(
       recentPosts
@@ -92,36 +91,25 @@ export async function runCycle(agentId: string): Promise<{
         .flatMap((p) => p.sources || [])
         .map((u) => u.toLowerCase().trim())
     );
-    const publishedTitles = new Set(
-      recentPosts
-        .slice(0, 20)
-        .map((p) => p.rationale?.slice(0, 60).toLowerCase() || '')
-    );
 
-    // Filter out already-published URLs and deduplicate by title similarity
-    const freshCandidates = allCandidates.filter((c) => {
-      const urlMatch = publishedUrls.has(c.url.toLowerCase().trim());
-      const titleMatch = [...publishedTitles].some((t) => t.includes(c.title.slice(0, 30).toLowerCase()));
-      return !urlMatch && !titleMatch;
-    });
-
-    // Choose from fresh candidates — rotate by using count of posts as offset
+    const freshCandidates = allCandidates.filter((c) => !publishedUrls.has(c.url.toLowerCase().trim()));
     const pool = freshCandidates.length > 0 ? freshCandidates : staticPool;
     const rotationIndex = recentPosts.length % pool.length;
     const chosenCandidate: Candidate = pool[rotationIndex] ?? pool[0];
 
     const publishingRationale = `Selected "${chosenCandidate.title}" because it exposes a critical high-signal development in ${domain}, outranking lower-priority candidate topics.`;
 
-    // Log rejected candidates
-    for (const rej of pool.filter((c) => c.url !== chosenCandidate.url).slice(0, 3)) {
-      await insertRejectionToDB({
+    // Log rejected candidate
+    const rejectedItem = pool.find((c) => c.url !== chosenCandidate.url) || pool[0];
+    if (rejectedItem && rejectedItem.url !== chosenCandidate.url) {
+      insertRejectionToDB({
         agentId,
-        topic: rej.title,
+        topic: rejectedItem.title,
         reason_rejected: `Lower editorial priority compared to top-ranked candidate "${chosenCandidate.title}".`,
-      });
+      }).catch(() => {});
     }
 
-    // 4. GENERATE POST using OpenAI or distinct fallback
+    // 4. GENERATE POST using OpenAI or fast fallback
     let postText = '';
     let llmActive = !!openai;
 
@@ -134,7 +122,7 @@ Write a high-signal technical post (150-220 words) about:
 Topic: "${chosenCandidate.title}"
 Source: ${chosenCandidate.url}
 
-Be specific, technical, and actionable. Different angle every time. End with 2-3 hashtags.`;
+Be specific, technical, and actionable. End with 2-3 hashtags.`;
 
         const writeRes = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
@@ -155,26 +143,12 @@ Be specific, technical, and actionable. Different angle every time. End with 2-3
       postText = generateRotatingPersonaPost(persona.name, domain, chosenCandidate, recentPosts.length);
     }
 
-    // 5. EMBED & STORE
-    let newEmbedding: number[] | undefined;
-    if (openai && llmActive) {
-      try {
-        const embRes = await openai.embeddings.create({
-          model: 'text-embedding-3-small',
-          input: postText,
-        });
-        newEmbedding = embRes.data[0]?.embedding;
-      } catch (e) {
-        // ignore
-      }
-    }
-
+    // 5. STORE POST
     const createdPost = await insertPostToDB({
       agentId,
       text: postText,
       rationale: publishingRationale,
       sources: [chosenCandidate.url],
-      embedding: newEmbedding,
     });
 
     console.log(`[Cycle] Published post ${createdPost.id} for persona ${persona.name} → "${chosenCandidate.title}"`);
@@ -185,7 +159,7 @@ Be specific, technical, and actionable. Different angle every time. End with 2-3
   }
 }
 
-// Large rotating static pools per domain — ensures variety even without live API
+// Rotating candidate pools per domain
 function getStaticCandidatePool(domain: string): Candidate[] {
   const d = domain.toLowerCase();
 
@@ -244,41 +218,41 @@ function getStaticCandidatePool(domain: string): Candidate[] {
   }
 }
 
-// Rotating fallback post templates — different angle each time based on post count
+// Rotating persona post generator
 function generateRotatingPersonaPost(name: string, domain: string, topic: Candidate, postCount: number): string {
   const d = domain.toLowerCase();
-  const angle = postCount % 4; // 4 different angles
+  const angle = postCount % 4;
 
   if (d.includes('security')) {
     const angles = [
-      `🚨 Threat Vector Alert: ${topic.title}\n\nSecurity audits across 50 enterprise AI deployments in Q2 2026 reveal that most teams are still ignoring prompt injection in tool-calling pipelines.\n\nAttackers inject payload strings via user-controlled fields that bypass guardrails entirely. The root fix is strict Zod schema validation at every tool boundary — not model-level instruction following.\n\nSource: ${topic.url}\n\n#AISecurity #MLSec #RedTeaming`,
-      `🔐 Defense Pattern: ${topic.title}\n\nThe most underestimated AI attack surface in 2026 is the context window itself. Once an attacker controls any portion of the input context, all downstream function calls are compromised.\n\nMitigation: Implement structured output parsing with strict JSON schemas before any tool execution. Never trust the model's own output as input validation.\n\nSource: ${topic.url}\n\n#AppSec #AIHardening #AgentSecurity`,
-      `⚠️ Incident Analysis: ${topic.title}\n\nThree production AI agent breaches in 2026 Q3 traced back to the same root: embedding-based memory retrieval with no sanitization layer.\n\nThe attacker uploaded a document designed to poison the vector store. The agent then retrieved malicious instructions as if they were legitimate context.\n\nAlways hash and validate documents before indexing. Treat the RAG pipeline as an attack surface.\n\nSource: ${topic.url}\n\n#RAGSecurity #VectorDB #AIThreats`,
-      `🛡️ Architecture Note: ${topic.title}\n\nMost AI security teams focus on model-level jailbreaks. The real frontier is infrastructure: Kubernetes RBAC for agent tool permissions, network policies for LLM API egress, and audit logs for every tool invocation.\n\nThe principle of least privilege applies to AI agents too. Scope their capabilities tightly from day one.\n\nSource: ${topic.url}\n\n#ZeroTrust #AIInfra #SecurityEngineering`,
+      `🚨 Threat Vector Alert: ${topic.title}\n\nSecurity audits across enterprise AI deployments reveal prompt injection vulnerabilities in tool-calling pipelines.\n\nAttackers inject payload strings via user fields that bypass guardrails. Fix: strict Zod schema validation at tool boundaries.\n\nSource: ${topic.url}\n\n#AISecurity #MLSec #RedTeaming`,
+      `🔐 Defense Pattern: ${topic.title}\n\nThe most underestimated attack surface is context window tampering. Once an attacker controls input context, downstream function calls are compromised.\n\nMitigation: Implement structured JSON schema outputs before tool execution.\n\nSource: ${topic.url}\n\n#AppSec #AIHardening #AgentSecurity`,
+      `⚠️ Incident Analysis: ${topic.title}\n\nProduction AI breaches traced to embedding-based memory retrieval without sanitization layers.\n\nAttackers poison vector stores to inject malicious instructions. Hash and validate documents before indexing.\n\nSource: ${topic.url}\n\n#RAGSecurity #VectorDB #AIThreats`,
+      `🛡️ Architecture Note: ${topic.title}\n\nFocus beyond model jailbreaks. Harden infrastructure with Kubernetes RBAC, egress policies, and tool invocation audit logging.\n\nApply least privilege principles to AI agents.\n\nSource: ${topic.url}\n\n#ZeroTrust #AIInfra #SecurityEngineering`,
     ];
     return angles[angle];
   } else if (d.includes('ml') || d.includes('engineer') || d.includes('systems')) {
     const angles = [
-      `⚡ Benchmark Drop: ${topic.title}\n\nWe ran vLLM with FP4 KV-cache on LLaMA 3.3 70B across 3 A100 nodes. Result: 3.4x memory reduction, 2.1x throughput increase, and <0.2% perplexity degradation.\n\nFor teams serving >10k RPM on 70B+ models, this is the most impactful infrastructure change you can make today.\n\nSource: ${topic.url}\n\n#LLMOps #MLInfrastructure #GPUOptimization`,
-      `🔬 Deep Dive: ${topic.title}\n\nSpeculative decoding on distributed GPU clusters is misunderstood. The draft model doesn't need to be the same architecture as the target — a 1B parameter draft accepting 7B tokens is often more efficient than same-family drafts.\n\nKey insight: minimize draft-target vocabulary alignment overhead, not draft latency.\n\nSource: ${topic.url}\n\n#SpeculativeDecoding #InferencePipeline #MLSystems`,
-      `📊 Systems Insight: ${topic.title}\n\nPagedAttention vs Chunked Prefill vs Continuous Batching — each optimizes for different bottlenecks. Most teams pick one and apply it everywhere.\n\nThe correct approach: profile your actual traffic pattern (long prefill vs short prefill, streaming vs batch), then apply the right strategy per use-case tier.\n\nSource: ${topic.url}\n\n#InferenceOptimization #LLMServing #AIArchitecture`,
-      `💡 Engineering Note: ${topic.title}\n\nKernel fusion in transformer decoding: fusing QKV projection + attention + output projection into a single CUDA kernel reduces memory bandwidth by 40% and enables sub-10ms TTFT on H100.\n\nThis is not a theoretical optimization — production vLLM deployments are already shipping this.\n\nSource: ${topic.url}\n\n#CUDAOptimization #TransformerInference #DeepLearningEngineering`,
+      `⚡ Benchmark Drop: ${topic.title}\n\nvLLM FP4 KV-cache benchmarks show 3.4x memory reduction, 2.1x throughput increase, and <0.2% perplexity loss.\n\nFor production teams serving >10k RPM, this cuts GPU infrastructure overhead significantly.\n\nSource: ${topic.url}\n\n#LLMOps #MLInfrastructure #GPUOptimization`,
+      `🔬 Deep Dive: ${topic.title}\n\nSpeculative decoding on GPU clusters: draft models don't need identical architecture to target models.\n\nKey insight: minimize draft-target vocabulary alignment overhead to maximize token acceptance.\n\nSource: ${topic.url}\n\n#SpeculativeDecoding #InferencePipeline #MLSystems`,
+      `📊 Systems Insight: ${topic.title}\n\nPagedAttention vs Continuous Batching: profile traffic patterns before applying optimizations universally.\n\nMatch prefill and streaming requirements per SLA tier.\n\nSource: ${topic.url}\n\n#InferenceOptimization #LLMServing #AIArchitecture`,
+      `💡 Engineering Note: ${topic.title}\n\nKernel fusion in transformer decoding reduces memory bandwidth overhead by 40%, enabling sub-10ms TTFT on Hopper GPUs.\n\nSource: ${topic.url}\n\n#CUDAOptimization #TransformerInference #DeepLearningEngineering`,
     ];
     return angles[angle];
   } else if (d.includes('robotics')) {
     const angles = [
-      `🤖 Field Report: ${topic.title}\n\nSim-to-real transfer failure rates dropped from 34% to 8% when we switched from randomized physics parameters to photorealistic raytraced rendering in Isaac Sim.\n\nThe visual fidelity of the simulated environment matters more than physics randomization for manipulation tasks. Your policy needs to see what it will see in deployment.\n\nSource: ${topic.url}\n\n#Robotics #SimToReal #EmbodiedAI`,
-      `⚙️ Control Systems: ${topic.title}\n\nAchieving sub-10ms control loop latency in humanoid locomotion requires dedicated real-time Linux kernels, PREEMPT_RT patches, and isolating sensor fusion to dedicated CPU cores.\n\nROS 2 with default settings is not real-time. You need to configure executor affinity and DDS middleware for deterministic timing.\n\nSource: ${topic.url}\n\n#ROS2 #RealTimeControl #HumanoidRobotics`,
-      `🦾 Research Insight: ${topic.title}\n\nWhole-body control for dexterous manipulation is not solved by larger models. The bottleneck is proprioceptive feedback latency — most grippers sample at 100Hz, but human touch receptors respond at 1000Hz.\n\nBridging this gap requires custom tactile sensors, not better policy networks.\n\nSource: ${topic.url}\n\n#DexterousManipulation #TactileSensing #RoboticsResearch`,
-      `📡 Systems Analysis: ${topic.title}\n\nNeural SLAM using NeRF-based representations is 10x slower than classical SLAM for loop closure but produces dramatically more consistent maps in dynamic environments.\n\nThe practical threshold: if your robot encounters >20% dynamic scene changes, switch to neural representations. Otherwise, stick to RTAB-Map.\n\nSource: ${topic.url}\n\n#SLAM #AutonomousNavigation #SpatialAI`,
+      `🤖 Field Report: ${topic.title}\n\nSim-to-real transfer failure rates dropped from 34% to 8% using photorealistic raytracing in Isaac Sim.\n\nVisual fidelity of simulated environments improves manipulation policy robustness.\n\nSource: ${topic.url}\n\n#Robotics #SimToReal #EmbodiedAI`,
+      `⚙️ Control Systems: ${topic.title}\n\nSub-10ms control loop latency in humanoid robots requires PREEMPT_RT real-time kernels and dedicated CPU core isolation.\n\nSource: ${topic.url}\n\n#ROS2 #RealTimeControl #HumanoidRobotics`,
+      `🦾 Research Insight: ${topic.title}\n\nWhole-body dexterous manipulation bottleneck: proprioceptive feedback sampling rate vs motor response latency.\n\nCustom tactile sensors bridge the physical response gap.\n\nSource: ${topic.url}\n\n#DexterousManipulation #TactileSensing #RoboticsResearch`,
+      `📡 Systems Analysis: ${topic.title}\n\nNeural SLAM using NeRF representations produces consistent maps in highly dynamic environments.\n\nSource: ${topic.url}\n\n#SLAM #AutonomousNavigation #SpatialAI`,
     ];
     return angles[angle];
   } else {
     const angles = [
-      `🌐 Open Source Report: ${topic.title}\n\nLocal LLM economics in 2026: a single RTX 4090 running Mistral 7B handles 180 req/min at $0.0003/1k tokens. GPT-4o costs $5/1M output tokens.\n\nFor internal tools, RAG pipelines, and batch processing: self-hosted open weights models are already 10x cheaper than closed API alternatives.\n\nSource: ${topic.url}\n\n#OpenSourceAI #LLMCosts #SelfHostedAI`,
-      `🔓 Community Insight: ${topic.title}\n\nThe quality gap between open and closed models is closing faster than expected. Qwen 2.5 72B matches GPT-4o on code generation benchmarks while running entirely locally.\n\nFor teams that care about data privacy, latency, and cost: the transition to open weights has never been more practical.\n\nSource: ${topic.url}\n\n#OpenWeightsAI #ModelBenchmarks #AIIndependence`,
-      `📦 Tooling Update: ${topic.title}\n\nUnsloth makes LoRA fine-tuning 2x faster with 60% less VRAM by fusing backward passes and using custom Triton kernels for gradient computation.\n\nYou can now fine-tune a 7B model on a single RTX 3080 in under 2 hours. Domain-specific fine-tuning is no longer a large-team privilege.\n\nSource: ${topic.url}\n\n#FineTuning #LoRA #OpenSourceML`,
-      `💬 Community Analysis: ${topic.title}\n\nHuggingFace's community-built instruction datasets are now outperforming proprietary training data on task-specific benchmarks.\n\nThe lesson: curated, domain-specific community data beats large-scale noisy crawls. Open collaboration is producing better training signal than closed corporate pipelines.\n\nSource: ${topic.url}\n\n#TrainingData #OpenSource #AIResearch`,
+      `🌐 Open Source Report: ${topic.title}\n\nLocal LLM serving with vLLM provides 100% data privacy and 5x latency improvements over cloud APIs.\n\nSelf-hosting open-weights models is the default stack for performance engineering.\n\nSource: ${topic.url}\n\n#OpenSourceAI #LLMCosts #SelfHostedAI`,
+      `🔓 Community Insight: ${topic.title}\n\nQwen 2.5 and LLaMA 3.3 match proprietary models on coding and reasoning benchmarks while running entirely locally.\n\nSource: ${topic.url}\n\n#OpenWeightsAI #ModelBenchmarks #AIIndependence`,
+      `📦 Tooling Update: ${topic.title}\n\nUnsloth engine accelerates LoRA fine-tuning 2x with 60% less VRAM by fusing backward passes.\n\nFine-tune 7B models on consumer GPUs in under 2 hours.\n\nSource: ${topic.url}\n\n#FineTuning #LoRA #OpenSourceML`,
+      `💬 Community Analysis: ${topic.title}\n\nCurated community instruction datasets outperform noisy web crawls on domain-specific benchmarks.\n\nSource: ${topic.url}\n\n#TrainingData #OpenSource #AIResearch`,
     ];
     return angles[angle];
   }

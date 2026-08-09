@@ -24,9 +24,7 @@ export async function GET(req: NextRequest) {
 
     // Run a new cycle if: no posts exist yet, OR user explicitly clicked Sync Feed
     if (dbPosts.length === 0 || refresh) {
-      runCycle(agentId).catch((err) => console.error('[Feed] Cycle error:', err));
-      // Give the cycle a moment to write the post, then re-read
-      await new Promise((r) => setTimeout(r, 800));
+      await runCycle(agentId);
       dbPosts = await getPostsFromDB(agentId);
     }
 
