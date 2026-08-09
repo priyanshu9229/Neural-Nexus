@@ -28,10 +28,13 @@ export function OutputWorkspace() {
     savedCampaigns,
     loadSavedCampaign,
     deleteSavedCampaign,
+    clearAllSavedCampaigns,
   } = useCreatorStore();
   const [packageCopied, setPackageCopied] = useState(false);
 
   if (!finalPackage) return null;
+
+  const activeCampaign = savedCampaigns.find((c) => c.package.title === finalPackage.title);
 
   const getFullMarkdownText = () => {
     return `# ${finalPackage.title}
@@ -68,13 +71,6 @@ ${finalPackage.hashtags.join(' ')}
 \`\`\`text
 ${finalPackage.imagePrompt}
 \`\`\`
-
----
-
-## 💡 AI Insights & Critique Notes
-- **Key Insights:** ${finalPackage.keyInsights.join('; ')}
-- **Reviewer Notes:** ${finalPackage.critiqueNotes.join('; ')}
-- **Improvements Made:** ${finalPackage.improvementsMade.join('; ')}
 `;
   };
 
@@ -104,6 +100,14 @@ ${finalPackage.imagePrompt}
     document.body.removeChild(element);
   };
 
+  const handleDeleteCurrent = () => {
+    if (activeCampaign) {
+      deleteSavedCampaign(activeCampaign.id);
+    } else {
+      clearAllSavedCampaigns();
+    }
+  };
+
   return (
     <div className="space-y-6 pt-4 border-t border-white/10">
       {/* Saved Campaigns History Bar */}
@@ -114,7 +118,13 @@ ${finalPackage.imagePrompt}
               <History className="w-3.5 h-3.5 text-purple-400" />
               Saved Campaign Deliverables ({savedCampaigns.length})
             </span>
-            <span className="text-[10px] font-mono text-gray-500">Persisted locally across refreshes</span>
+            <button
+              onClick={clearAllSavedCampaigns}
+              className="text-[10px] font-mono text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1 hover:underline"
+            >
+              <Trash2 className="w-3 h-3" />
+              Clear All History
+            </button>
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1 font-sans text-xs">
@@ -133,15 +143,13 @@ ${finalPackage.imagePrompt}
                     <FolderClock className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                     <span className="truncate">{c.goal || c.package.title}</span>
                   </button>
-                  {savedCampaigns.length > 1 && (
-                    <button
-                      onClick={() => deleteSavedCampaign(c.id)}
-                      className="text-gray-500 hover:text-rose-400 transition-colors p-0.5"
-                      title="Delete saved campaign"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => deleteSavedCampaign(c.id)}
+                    className="text-gray-500 hover:text-rose-400 transition-colors p-0.5"
+                    title="Delete this campaign"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 </div>
               );
             })}
@@ -182,6 +190,15 @@ ${finalPackage.imagePrompt}
           >
             <FileCode className="w-3.5 h-3.5 text-cyan-400" />
             <span>.JSON</span>
+          </button>
+
+          <button
+            onClick={handleDeleteCurrent}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 hover:text-rose-200 text-xs font-mono transition-all active:scale-95"
+            title="Delete this deliverable"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            <span>Delete</span>
           </button>
         </div>
       </div>
@@ -233,7 +250,7 @@ ${finalPackage.imagePrompt}
           }`}
         >
           <ImageIcon className="w-4 h-4 text-pink-400" />
-          Hashtags & Visuals
+          Hashtags & Visual Prompt
         </button>
 
         <button
@@ -288,51 +305,22 @@ ${finalPackage.imagePrompt}
         )}
 
         {selectedTab === 'assets' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ContentCard
-                title="Curated Hashtag Stack"
-                badge="High Reach & Niche"
-                icon={Hash}
-                content={finalPackage.hashtags.join('  ')}
-                footerInfo={`${finalPackage.hashtags.length} Tags Selected`}
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ContentCard
+              title="Curated Hashtag Stack"
+              badge="High Reach & Niche"
+              icon={Hash}
+              content={finalPackage.hashtags.join('  ')}
+              footerInfo={`${finalPackage.hashtags.length} Tags Selected`}
+            />
 
-              <ContentCard
-                title="Visual Concept Prompt"
-                badge="Cinematic Concept"
-                icon={ImageIcon}
-                content={finalPackage.imagePrompt}
-                footerInfo="Use for visual campaign direction"
-              />
-            </div>
-
-            {/* Campaign Visual Asset Preview */}
-            <div className="rounded-2xl border border-white/10 glass-panel p-5 space-y-3 bg-[#080910]">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm text-white flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-purple-400" />
-                  Campaign Visual Asset
-                </h3>
-                <a
-                  href={`https://image.pollinations.ai/prompt/${encodeURIComponent(finalPackage.imagePrompt.replace(/--\w+\s+\S+/g, ''))}?width=1280&height=720&nologo=true`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-mono text-purple-400 hover:text-purple-300 underline"
-                >
-                  Open High-Res Artwork ↗
-                </a>
-              </div>
-
-              <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-white/10 bg-black/50 flex items-center justify-center">
-                <img
-                  src={`https://image.pollinations.ai/prompt/${encodeURIComponent(finalPackage.imagePrompt.replace(/--\w+\s+\S+/g, ''))}?width=1024&height=576&nologo=true`}
-                  alt="Campaign Visual Asset"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-            </div>
+            <ContentCard
+              title="Visual Concept Prompt"
+              badge="Cinematic Concept"
+              icon={ImageIcon}
+              content={finalPackage.imagePrompt}
+              footerInfo="Use for visual campaign direction"
+            />
           </div>
         )}
 
