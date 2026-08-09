@@ -103,7 +103,27 @@ What's your team's biggest bottleneck right now? Drop a comment below 👇
     '#Leadership',
   ];
 
-  const imagePrompt = `Photorealistic 3D cinematic visual conceptualizing ${topic}, highly detailed subject representation, volumetric studio lighting, Octane render 8K resolution, elegant dark background, ultra-detailed`;
+  const getTopicVisualPrompt = (t: string): string => {
+    const lower = t.toLowerCase();
+    if (lower.includes('health') || lower.includes('medic') || lower.includes('doctor') || lower.includes('bio')) {
+      return `A sleek modern medical hospital laboratory with glowing blue holographic DNA helix and AI diagnostic screens, photorealistic 8K render, volumetric studio lighting`;
+    }
+    if (lower.includes('security') || lower.includes('cyber') || lower.includes('hacks') || lower.includes('privacy')) {
+      return `A cyber security operations center with glowing neon digital shields, matrix data streams, and high-tech server racks, 8K cinematic photography`;
+    }
+    if (lower.includes('robot') || lower.includes('automation') || lower.includes('drones') || lower.includes('hardware')) {
+      return `A modern autonomous robotic arm performing precision engineering in a futuristic cleanroom facility, 8K ultra detailed render`;
+    }
+    if (lower.includes('financ') || lower.includes('money') || lower.includes('stock') || lower.includes('crypto') || lower.includes('trade')) {
+      return `Futuristic digital stock market trading desk with glowing interactive financial charts and 3D data visualization, 8K resolution`;
+    }
+    if (lower.includes('edu') || lower.includes('learn') || lower.includes('student') || lower.includes('school')) {
+      return `A modern interactive digital classroom with floating 3D holographic diagrams and sleek glass tables, 8K futuristic studio`;
+    }
+    return `High-tech neural network artificial intelligence visualization for ${t} with glowing interconnected cyan and purple nodes, sleek dark glassmorphism aesthetic, 8K render`;
+  };
+
+  const imagePrompt = getTopicVisualPrompt(topic);
 
   const finalPackage: ContentPackage = {
     title: `Autonomous Content Suite: ${topic}`,
