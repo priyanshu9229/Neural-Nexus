@@ -298,7 +298,7 @@ export function AutonomousFeedDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-[11px] font-mono text-gray-300 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-gray-300 shrink-0">
             <span className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
               <Database className="w-3.5 h-3.5 text-cyan-400" />
               Vector Memory: 1536-dim
@@ -348,17 +348,17 @@ export function AutonomousFeedDashboard() {
 
       {/* Feed Stream */}
       <div className="rounded-2xl border border-white/10 glass-panel p-5 space-y-4 bg-[#06070E]">
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{selectedPersona.avatar}</span>
-            <div>
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                {selectedPersona.n}'s Autonomous Stream
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 border-b border-white/10 pb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-2xl shrink-0">{selectedPersona.avatar}</span>
+            <div className="min-w-0">
+              <h3 className="font-bold text-base text-white flex flex-wrap items-center gap-2">
+                <span className="truncate">{selectedPersona.n}'s Autonomous Stream</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
                   {selectedPersona.d}
                 </span>
               </h3>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-400 mt-0.5 truncate">
                 Self-updating feed • {activePosts.length} published insight{activePosts.length === 1 ? '' : 's'} across 24-48h
               </p>
             </div>
@@ -370,7 +370,7 @@ export function AutonomousFeedDashboard() {
               if (activeId) fetchPersonaFeed(selectedPersona.n, activeId, true);
             }}
             disabled={isFetching}
-            className="flex items-center justify-center gap-2 text-xs font-medium px-4 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-200 transition-all active:scale-95 shrink-0"
+            className="flex items-center justify-center gap-2 text-xs font-medium px-4 py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-200 transition-all active:scale-95 shrink-0 self-start sm:self-auto w-full sm:w-auto"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-purple-400 ${isFetching ? 'animate-spin' : ''}`} />
             <span>{isFetching ? 'Syncing New Cycle...' : 'Force Sync Cycle'}</span>
