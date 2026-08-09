@@ -27,10 +27,8 @@ export async function POST(req: NextRequest) {
       editorial_criteria,
     });
 
-    // Fire cycle in non-blocking background task so response is instant (<20ms)
-    runCycle(persona.agentId).catch((err) => {
-      console.error('[Init] Background cycle error:', err);
-    });
+    // Run initial cycle to generate starting post for persona
+    await runCycle(persona.agentId);
 
     return NextResponse.json({
       agentId: persona.agentId,

@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -36,43 +37,62 @@ export interface DBRejection {
   created_at: string;
 }
 
-// In-Memory & Local Disk fallback for ultra-fast response
-const LOCAL_DATA_DIR = path.join(process.cwd(), '.data');
-const LOCAL_DB_FILE = path.join(LOCAL_DATA_DIR, 'db.json');
-
 interface LocalDB {
   personas: Record<string, DBPersona>;
   posts: DBPost[];
   rejections: DBRejection[];
 }
 
-function loadLocalDB(): LocalDB {
+// Global in-memory singleton for serverless runtime resilience
+declare global {
+  var __GLOBAL_DB__: LocalDB | undefined;
+}
+
+function getTmpDbPath(): string {
   try {
-    if (!fs.existsSync(LOCAL_DATA_DIR)) {
-      fs.mkdirSync(LOCAL_DATA_DIR, { recursive: true });
-    }
-    if (fs.existsSync(LOCAL_DB_FILE)) {
-      return JSON.parse(fs.readFileSync(LOCAL_DB_FILE, 'utf-8'));
+    return path.join(os.tmpdir(), 'creator_os_db.json');
+  } catch {
+    return path.join(process.cwd(), '.data', 'db.json');
+  }
+}
+
+function loadLocalDB(): LocalDB {
+  if (globalThis.__GLOBAL_DB__) {
+    return globalThis.__GLOBAL_DB__;
+  }
+
+  const tmpPath = getTmpDbPath();
+  try {
+    if (fs.existsSync(tmpPath)) {
+      const data = JSON.parse(fs.readFileSync(tmpPath, 'utf-8'));
+      globalThis.__GLOBAL_DB__ = data;
+      return data;
     }
   } catch (e) {
-    console.error('Error reading local DB:', e);
+    // Ignore read errors
   }
-  return { personas: {}, posts: [], rejections: [] };
+
+  const initial: LocalDB = { personas: {}, posts: [], rejections: [] };
+  globalThis.__GLOBAL_DB__ = initial;
+  return initial;
 }
 
 function saveLocalDB(data: LocalDB) {
+  globalThis.__GLOBAL_DB__ = data;
+  const tmpPath = getTmpDbPath();
   try {
-    if (!fs.existsSync(LOCAL_DATA_DIR)) {
-      fs.mkdirSync(LOCAL_DATA_DIR, { recursive: true });
+    const dir = path.dirname(tmpPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(LOCAL_DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (e) {
-    console.error('Error writing local DB:', e);
+    // Ignore write errors on read-only serverless file systems
   }
 }
 
-// Fast timeout wrapper to prevent Supabase network timeouts from blocking routes
-async function withFastTimeout<T>(promiseLike: PromiseLike<T>, ms = 250): Promise<T | null> {
+// Timeout wrapper set to 3000ms to allow Supabase queries to finish on serverless lambdas
+async function withFastTimeout<T>(promiseLike: PromiseLike<T>, ms = 3000): Promise<T | null> {
   let timer: NodeJS.Timeout;
   const timeoutPromise = new Promise<null>((resolve) => {
     timer = setTimeout(() => resolve(null), ms);
