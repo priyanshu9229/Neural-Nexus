@@ -19,6 +19,18 @@ body {
   color: #E5E2E3;
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Text Selection Highlighting */
+::selection {
+  background-color: rgba(147, 51, 234, 0.4);
+  color: #F3E8FF;
+}
+
+html.light ::selection {
+  background-color: #C7D2FE !important;
+  color: #1E1B4B !important;
 }
 
 /* Custom Scrollbar */
@@ -99,4 +111,174 @@ body {
 
 .animate-pulse-glow {
   animation: pulse-glow 3s infinite ease-in-out;
+}
+
+/* ==========================================================================
+   Light Mode Scoped Overrides (Vibrant High-Contrast Palette)
+   Zero interference with Dark Mode (only active when html has .light class)
+   ========================================================================== */
+
+html.light body {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+html.light ::-webkit-scrollbar-track {
+  background: #F1F5F9 !important;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #CBD5E1 !important;
+}
+
+/* Header & Brand Logo in Light Mode */
+html.light header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #CBD5E1 !important;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light [class*="bg-black/80"],
+html.light [class*="bg-black/60"] {
+  background-color: #F8FAFC !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+/* Glass Panels in Light Mode */
+html.light .glass-panel,
+html.light .glass-panel-interactive {
+  background: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light .glass-panel-interactive:hover {
+  border-color: #94A3B8 !important;
+  box-shadow: 0 8px 25px -4px rgba(15, 23, 42, 0.09) !important;
+}
+
+html.light .gradient-text {
+  background: linear-gradient(135deg, #0F172A 0%, #312E81 50%, #1D4ED8 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* High-Contrast Ultra-Readable Typography */
+html.light .text-white,
+html.light .text-gray-100,
+html.light .text-gray-200 {
+  color: #0F172A !important;
+}
+
+html.light .text-gray-300 {
+  color: #1E293B !important;
+}
+
+html.light .text-gray-400,
+html.light .text-gray-500 {
+  color: #334155 !important;
+}
+
+html.light .text-purple-300,
+html.light .text-purple-400,
+html.light .text-purple-200 {
+  color: #312E81 !important;
+}
+
+html.light .text-emerald-400,
+html.light .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.light .text-cyan-400,
+html.light .text-cyan-300 {
+  color: #0369A1 !important;
+}
+
+/* Dark Component Background Replacements */
+html.light [class*="bg-[#06060A]"],
+html.light [class*="bg-[#0A0A0B]"],
+html.light [class*="bg-[#06070E]"],
+html.light [class*="bg-[#080911]"],
+html.light [class*="bg-[#080912]"],
+html.light [class*="bg-[#090A12]"],
+html.light [class*="bg-[#07080E]"],
+html.light [class*="bg-[#080910]"] {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+/* Inner Code & Pre Boxes */
+html.light pre,
+html.light code,
+html.light [class*="font-mono"] {
+  color: #0F172A !important;
+}
+
+/* Borders & Badges */
+html.light [class*="border-white/10"],
+html.light [class*="border-white/5"],
+html.light [class*="border-white/15"],
+html.light [class*="border-white/20"] {
+  border-color: #CBD5E1 !important;
+}
+
+html.light [class*="bg-white/5"],
+html.light [class*="bg-white/10"] {
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0 !important;
+}
+
+html.light [class*="bg-purple-500/10"],
+html.light [class*="bg-purple-500/20"],
+html.light [class*="bg-purple-600/20"] {
+  background-color: #EEF2FF !important;
+  border-color: #C7D2FE !important;
+  color: #312E81 !important;
+}
+
+html.light [class*="bg-purple-950/20"],
+html.light [class*="bg-purple-900/20"],
+html.light [class*="bg-black/40"] {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+/* Active Persona & Primary CTA Buttons */
+html.light [class*="bg-purple-900/30"] {
+  background-color: #0F172A !important;
+  color: #FFFFFF !important;
+  border-color: #0F172A !important;
+}
+
+html.light [class*="bg-purple-900/30"] * {
+  color: #FFFFFF !important;
+}
+
+html.light .bg-purple-600,
+html.light [class*="bg-gradient-to-r from-purple-600"] {
+  background: #0F172A !important;
+  color: #FFFFFF !important;
+  border-color: #0F172A !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15) !important;
+}
+
+html.light .bg-purple-600:hover,
+html.light [class*="bg-gradient-to-r from-purple-600"]:hover {
+  background: #1E293B !important;
+}
+
+/* Input Fields & Textareas */
+html.light textarea,
+html.light input {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+html.light textarea::placeholder,
+html.light input::placeholder {
+  color: #64748B !important;
 }

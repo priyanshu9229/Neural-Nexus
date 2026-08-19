@@ -301,7 +301,7 @@ export function AutonomousFeedDashboard() {
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-gray-300 shrink-0">
             <span className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
               <Database className="w-3.5 h-3.5 text-cyan-400" />
-              Vector Memory: 1536-dim
+              Memory Engine: Anti-Duplicate
             </span>
             <span className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
               <Activity className="w-3.5 h-3.5 text-purple-400" />
@@ -400,7 +400,7 @@ export function AutonomousFeedDashboard() {
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       <span className="font-semibold text-white">{selectedPersona.n}</span>
                       <span className="text-gray-500 font-mono">•</span>
-                      <span className="text-gray-400 font-mono text-[11px]">
+                      <span className="text-gray-400 font-mono text-[11px]" suppressHydrationWarning>
                         {new Date(post.createdAt).toLocaleString([], {
                           month: 'short',
                           day: 'numeric',

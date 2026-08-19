@@ -4,24 +4,24 @@ import { AgentName, AgentState, ContentPackage } from '@/types';
 
 export interface SavedCampaign {
   id: string;
-  createdAt: string;
+  timestamp: string;
   goal: string;
   package: ContentPackage;
 }
 
-export const DEFAULT_AGENTS: AgentState[] = [
+const DEFAULT_AGENTS: AgentState[] = [
   {
     name: 'Planner',
     title: 'Content Strategy Planner',
-    description: 'Deconstructs goal into sub-tasks & defines strategic hook angle',
+    description: 'Deconstructs goal, defines target persona, and establishes core hook angle',
     status: 'idle',
     reasoning: '',
     output: '',
   },
   {
     name: 'Researcher',
-    title: 'Market Trends Researcher',
-    description: 'Surfaces key industry insights, stats & high-engagement hooks',
+    title: 'Data & Metric Researcher',
+    description: 'Extracts real-time trends, key market data, and counter-intuitive insights',
     status: 'idle',
     reasoning: '',
     output: '',
@@ -79,9 +79,11 @@ interface CreatorStore {
   selectedTab: string;
   elapsedTime: number;
   savedCampaigns: SavedCampaign[];
+  theme: 'dark' | 'light';
 
   setGoal: (goal: string) => void;
   setSelectedTab: (tab: string) => void;
+  toggleTheme: () => void;
   startPipeline: () => void;
   updateAgentStatus: (name: AgentName, status: AgentState['status'], reasoning?: string) => void;
   appendAgentToken: (name: AgentName, token: string) => void;
@@ -110,9 +112,23 @@ export const useCreatorStore = create<CreatorStore>()(
       selectedTab: 'linkedin',
       elapsedTime: 0,
       savedCampaigns: [],
+      theme: 'dark',
 
       setGoal: (goal) => set({ goal }),
       setSelectedTab: (selectedTab) => set({ selectedTab }),
+      toggleTheme: () => {
+        const next = get().theme === 'dark' ? 'light' : 'dark';
+        set({ theme: next });
+        if (typeof document !== 'undefined') {
+          if (next === 'light') {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+          } else {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+          }
+        }
+      },
 
       startPipeline: () => {
         const runId = Math.random().toString(36).substring(2, 9);
@@ -123,140 +139,127 @@ export const useCreatorStore = create<CreatorStore>()(
           elapsedTime: 0,
           liveLogs: [],
           finalPackage: null,
-          agents: DEFAULT_AGENTS.map((agent, i) => ({
-            ...agent,
-            status: i === 0 ? 'running' : 'pending',
-            reasoning: '',
-            output: '',
-            startedAt: i === 0 ? Date.now() : undefined,
-          })),
+          agents: DEFAULT_AGENTS.map((a, i) =>
+            i === 0 ? { ...a, status: 'running' } : { ...a, status: 'pending', reasoning: '', output: '' }
+          ),
         });
-        get().addLog('Planner', '🚀 Pipeline initialized. Dispatching Goal to Planner Agent...', 'info');
       },
 
       updateAgentStatus: (name, status, reasoning) => {
-        set((state) => {
-          const idx = state.agents.findIndex((a) => a.name === name);
-          if (idx === -1) return state;
+        const { agents } = get();
+        const index = agents.findIndex((a) => a.name === name);
+        if (index === -1) return;
 
-          const newAgents = [...state.agents];
-          newAgents[idx] = {
-            ...newAgents[idx],
-            status,
-            reasoning: reasoning !== undefined ? reasoning : newAgents[idx].reasoning,
-            startedAt: status === 'running' ? Date.now() : newAgents[idx].startedAt,
-            finishedAt: status === 'done' || status === 'error' ? Date.now() : newAgents[idx].finishedAt,
-          };
+        const updated = [...agents];
+        updated[index] = {
+          ...updated[index],
+          status,
+          ...(reasoning !== undefined ? { reasoning } : {}),
+        };
 
-          const activeIdx = status === 'running' ? idx : state.activeAgentIndex;
+        let nextIndex = get().activeAgentIndex;
+        if (status === 'running') {
+          nextIndex = index;
+        } else if (status === 'done' && index < agents.length - 1) {
+          nextIndex = index + 1;
+          if (updated[nextIndex].status === 'pending') {
+            updated[nextIndex].status = 'running';
+          }
+        }
 
-          return {
-            agents: newAgents,
-            activeAgentIndex: activeIdx,
-          };
-        });
+        set({ agents: updated, activeAgentIndex: nextIndex });
       },
 
       appendAgentToken: (name, token) => {
-        set((state) => {
-          const idx = state.agents.findIndex((a) => a.name === name);
-          if (idx === -1) return state;
+        const { agents } = get();
+        const index = agents.findIndex((a) => a.name === name);
+        if (index === -1) return;
 
-          const newAgents = [...state.agents];
-          newAgents[idx] = {
-            ...newAgents[idx],
-            output: newAgents[idx].output + token,
-          };
+        const updated = [...agents];
+        updated[index] = {
+          ...updated[index],
+          output: (updated[index].output || '') + token,
+        };
 
-          return { agents: newAgents };
-        });
+        set({ agents: updated });
       },
 
       completeAgent: (name, output, reasoning) => {
-        set((state) => {
-          const idx = state.agents.findIndex((a) => a.name === name);
-          if (idx === -1) return state;
+        const { agents } = get();
+        const index = agents.findIndex((a) => a.name === name);
+        if (index === -1) return;
 
-          const now = Date.now();
-          const newAgents = [...state.agents];
-          const start = newAgents[idx].startedAt || now;
+        const updated = [...agents];
+        updated[index] = {
+          ...updated[index],
+          status: 'done',
+          output,
+          reasoning,
+        };
 
-          newAgents[idx] = {
-            ...newAgents[idx],
-            status: 'done',
-            output,
-            reasoning,
-            finishedAt: now,
-            durationMs: now - start,
-          };
+        const nextIndex = index < agents.length - 1 ? index + 1 : index;
+        if (nextIndex > index && updated[nextIndex].status === 'pending') {
+          updated[nextIndex].status = 'running';
+        }
 
-          const nextIdx = idx + 1;
-          if (nextIdx < newAgents.length) {
-            newAgents[nextIdx] = {
-              ...newAgents[nextIdx],
-              status: 'running',
-              startedAt: now,
-            };
-          }
-
-          return {
-            agents: newAgents,
-            activeAgentIndex: nextIdx < newAgents.length ? nextIdx : idx,
-          };
-        });
+        set({ agents: updated, activeAgentIndex: nextIndex });
       },
 
       setFinalPackage: (pkg) => {
-        const currentGoal = get().goal || pkg.title || 'Campaign Deliverables';
+        const goal = get().goal;
+        const savedCampaigns = get().savedCampaigns;
+
         const newCampaign: SavedCampaign = {
           id: Math.random().toString(36).substring(2, 9),
-          createdAt: new Date().toISOString(),
-          goal: currentGoal,
+          timestamp: new Date().toISOString(),
+          goal,
           package: pkg,
         };
 
-        const prevCampaigns = get().savedCampaigns || [];
-        const filtered = prevCampaigns.filter((c) => c.package.title !== pkg.title);
-        const updatedCampaigns = [newCampaign, ...filtered].slice(0, 20);
+        const filtered = savedCampaigns.filter((c) => c.package.title !== pkg.title);
+        const updatedSaved = [newCampaign, ...filtered].slice(0, 20);
 
         set({
           finalPackage: pkg,
           pipelineState: 'completed',
-          activeAgentIndex: 5,
-          savedCampaigns: updatedCampaigns,
+          savedCampaigns: updatedSaved,
         });
-        get().addLog('Publisher', '🎉 Complete Content Package finalized & saved to local history!', 'success');
       },
 
       setPipelineError: (error) => {
-        set({ pipelineState: 'error' });
-        get().addLog('Planner', `❌ Pipeline encountered an error: ${error}`, 'error');
+        const { agents, activeAgentIndex } = get();
+        const updated = [...agents];
+        if (activeAgentIndex >= 0 && activeAgentIndex < agents.length) {
+          updated[activeAgentIndex].status = 'error';
+        }
+        set({ pipelineState: 'error', agents: updated });
+        get().addLog('Publisher', `⚠️ Pipeline Error: ${error}`, 'error');
       },
 
-      addLog: (agent, text, type = 'token') => {
-        const entry: LogEntry = {
+      addLog: (agent, text, type = 'info') => {
+        const newLog: LogEntry = {
           id: Math.random().toString(36).substring(2, 9),
-          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
           agent,
           text,
           type,
         };
-        set((state) => ({ liveLogs: [...state.liveLogs.slice(-150), entry] }));
+        set((state) => ({ liveLogs: [...state.liveLogs, newLog] }));
       },
 
       resetPipeline: () => {
         set({
           pipelineState: 'idle',
-          agents: DEFAULT_AGENTS,
           activeAgentIndex: -1,
           liveLogs: [],
           finalPackage: null,
           elapsedTime: 0,
+          agents: DEFAULT_AGENTS.map((a) => ({ ...a, status: 'pending', reasoning: '', output: '' })),
         });
       },
 
       tickTimer: () => {
-        set((state) => (state.pipelineState === 'running' ? { elapsedTime: state.elapsedTime + 1 } : {}));
+        set((state) => ({ elapsedTime: state.elapsedTime + 1 }));
       },
 
       loadSavedCampaign: (id) => {
@@ -265,41 +268,35 @@ export const useCreatorStore = create<CreatorStore>()(
           set({
             finalPackage: campaign.package,
             goal: campaign.goal,
-            pipelineState: 'completed',
-            selectedTab: 'linkedin',
           });
         }
       },
 
       deleteSavedCampaign: (id) => {
-        set((state) => {
-          const updated = state.savedCampaigns.filter((c) => c.id !== id);
-          const isCurrentDeleted = state.finalPackage && !updated.some((c) => c.package.title === state.finalPackage?.title);
-          return {
-            savedCampaigns: updated,
-            finalPackage: isCurrentDeleted ? (updated[0]?.package || null) : state.finalPackage,
-          };
-        });
+        const filtered = get().savedCampaigns.filter((c) => c.id !== id);
+        set({ savedCampaigns: filtered });
+        if (filtered.length > 0) {
+          set({
+            finalPackage: filtered[0].package,
+            goal: filtered[0].goal,
+          });
+        } else {
+          set({
+            finalPackage: null,
+          });
+        }
       },
 
       clearAllSavedCampaigns: () => {
-        set({ savedCampaigns: [], finalPackage: null, pipelineState: 'idle' });
+        set({
+          savedCampaigns: [],
+          finalPackage: null,
+        });
       },
     }),
     {
-      name: 'creator_os_studio_store_v1',
-      storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : ({} as any))),
-      partialize: (state) => ({
-        goal: state.goal,
-        runId: state.runId,
-        pipelineState: state.pipelineState,
-        agents: state.agents,
-        activeAgentIndex: state.activeAgentIndex,
-        liveLogs: state.liveLogs,
-        finalPackage: state.finalPackage,
-        selectedTab: state.selectedTab,
-        savedCampaigns: state.savedCampaigns,
-      }),
+      name: 'creator-os-storage',
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );

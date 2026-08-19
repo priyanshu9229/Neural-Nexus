@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useCreatorStore } from '@/lib/store';
 import { AgentPipeline } from '@/components/agents/AgentPipeline';
 import { AgentLiveFeed } from '@/components/agents/AgentLiveFeed';
 import { OutputWorkspace } from '@/components/output/OutputWorkspace';
 import { PresetGoals } from '@/components/studio/PresetGoals';
 import { AutonomousFeedDashboard } from '@/components/autonomous/AutonomousFeedDashboard';
-import { Sparkles, Play, RefreshCw, Clock, AlertCircle, Bot, Radio, Zap } from 'lucide-react';
+import { Sparkles, Play, AlertCircle, Radio, Zap, Command } from 'lucide-react';
 import { StreamEvent } from '@/types';
-import { formatTime } from '@/lib/utils';
 
 export default function StudioPage() {
   const [activeTab, setActiveTab] = useState<'autonomous' | 'interactive'>('autonomous');
@@ -25,8 +24,6 @@ export default function StudioPage() {
     setFinalPackage,
     setPipelineError,
     addLog,
-    resetPipeline,
-    elapsedTime,
     tickTimer,
   } = useCreatorStore();
 
@@ -42,7 +39,7 @@ export default function StudioPage() {
     };
   }, [pipelineState, tickTimer]);
 
-  const handleLaunch = async () => {
+  const handleLaunch = useCallback(async () => {
     if (!goal.trim()) {
       setInputError('Please enter a content goal first (or select a preset below).');
       return;
@@ -93,7 +90,21 @@ export default function StudioPage() {
     } catch (err: any) {
       setPipelineError(err?.message || 'Failed to communicate with AI agent stream.');
     }
-  };
+  }, [goal, startPipeline, setPipelineError]);
+
+  // Keyboard shortcut listener (Ctrl+Enter or Cmd+Enter to launch)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (activeTab === 'interactive' && pipelineState !== 'running') {
+          e.preventDefault();
+          handleLaunch();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, pipelineState, handleLaunch]);
 
   const processStreamEvent = (event: StreamEvent) => {
     const { agent, type, status, token, reasoning, package: pkg, error } = event;
@@ -113,6 +124,9 @@ export default function StudioPage() {
       setPipelineError(error);
     }
   };
+
+  const wordCount = goal.trim() ? goal.trim().split(/\s+/).length : 0;
+  const charCount = goal.length;
 
   return (
     <div className="space-y-8 py-4">
@@ -167,7 +181,12 @@ export default function StudioPage() {
                 <Sparkles className="w-4 h-4 text-purple-400" />
                 Define Content Goal
               </label>
-              <span className="text-[11px] font-mono text-gray-500">Triggers 6 AI Agents</span>
+              <div className="flex items-center gap-3 text-[11px] font-mono text-gray-400">
+                <span className="hidden sm:inline-flex items-center gap-1 text-gray-500">
+                  <Command className="w-3 h-3" /> + Enter to launch
+                </span>
+                <span>{wordCount} words | {charCount} chars</span>
+              </div>
             </div>
 
             <div className="space-y-2">

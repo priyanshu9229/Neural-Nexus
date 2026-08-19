@@ -2,19 +2,45 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, Sparkles, Terminal } from 'lucide-react';
+import { Bot, Sparkles, Terminal, Sun, Moon } from 'lucide-react';
+import { useCreatorStore } from '@/lib/store';
+import { useEffect, useState } from 'react';
 
 export function Navbar() {
   const pathname = usePathname();
+  const { theme, toggleTheme } = useCreatorStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (theme === 'light') {
+        document.documentElement.classList.add('light');
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      }
+    }
+  }, [theme]);
+
+  const isLight = mounted && theme === 'light';
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 glass-panel backdrop-blur-xl">
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 glass-panel backdrop-blur-xl transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <Link href="/" prefetch={true} className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-blue-600 p-[1px] shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40 transition-all duration-300">
-            <div className="w-full h-full bg-black/80 rounded-[11px] flex items-center justify-between px-2">
-              <Bot className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
+            <div className={`w-full h-full rounded-[11px] flex items-center justify-center transition-colors ${
+              isLight ? 'bg-white' : 'bg-black/80'
+            }`}>
+              <Bot className={`w-5 h-5 group-hover:scale-110 transition-transform ${
+                isLight ? 'text-indigo-600' : 'text-purple-400'
+              }`} />
             </div>
           </div>
           <div className="flex flex-col">
@@ -61,8 +87,27 @@ export function Navbar() {
           </Link>
         </nav>
 
-        {/* Right CTA */}
-        <div className="flex items-center gap-3">
+        {/* Right Actions & Theme Toggle */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={toggleTheme}
+            className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+            title={`Switch to ${mounted && theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            suppressHydrationWarning
+          >
+            {!mounted || theme === 'dark' ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Light</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden sm:inline">Dark</span>
+              </>
+            )}
+          </button>
+
           <Link
             href="/studio"
             prefetch={true}
