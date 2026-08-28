@@ -183,7 +183,7 @@ const INITIAL_PERSONA_POSTS: Record<string, FeedPost[]> = {
 function renderFormattedPostText(text: string) {
   if (!text.includes('• What Happened:') || !text.includes('• Why It Matters:')) {
     return (
-      <p className="text-xs sm:text-sm text-gray-200 leading-relaxed font-sans whitespace-pre-wrap">
+      <p className="text-xs sm:text-sm text-gray-200 leading-relaxed font-sans whitespace-pre-wrap break-all sm:break-words max-w-full overflow-hidden">
         {text}
       </p>
     );
@@ -201,33 +201,33 @@ function renderFormattedPostText(text: string) {
   const hashtags = hashtagsMatch ? hashtagsMatch[1].trim() : '';
 
   return (
-    <div className="space-y-3 pt-1">
+    <div className="space-y-3 pt-1 max-w-full overflow-hidden">
       {headline && (
-        <h4 className="font-bold text-sm sm:text-base text-white tracking-tight leading-snug">
+        <h4 className="font-bold text-sm sm:text-base text-white tracking-tight leading-snug break-words">
           {headline}
         </h4>
       )}
 
       {whatHappened && (
-        <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs space-y-1">
+        <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs space-y-1 max-w-full overflow-hidden">
           <span className="font-mono font-bold text-[11px] uppercase tracking-wider text-blue-400 block">
             • What Happened
           </span>
-          <p className="text-gray-200 leading-relaxed font-sans">{whatHappened}</p>
+          <p className="text-gray-200 leading-relaxed font-sans break-all sm:break-words">{whatHappened}</p>
         </div>
       )}
 
       {whyItMatters && (
-        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-1">
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-1 max-w-full overflow-hidden">
           <span className="font-mono font-bold text-[11px] uppercase tracking-wider text-emerald-400 block">
             • Why It Matters
           </span>
-          <p className="text-gray-200 leading-relaxed font-sans">{whyItMatters}</p>
+          <p className="text-gray-200 leading-relaxed font-sans break-all sm:break-words">{whyItMatters}</p>
         </div>
       )}
 
       {hashtags && (
-        <div className="text-[11px] font-mono text-purple-400 pt-1">
+        <div className="text-[11px] font-mono text-purple-400 pt-1 break-words">
           {hashtags}
         </div>
       )}

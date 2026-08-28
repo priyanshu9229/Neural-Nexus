@@ -114,8 +114,8 @@ html.light ::selection {
 }
 
 /* ==========================================================================
-   Light Mode Scoped Overrides (Vibrant High-Contrast Palette)
-   Zero interference with Dark Mode (only active when html has .light class)
+   Scoped Light Mode Overrides (High-Contrast & Graphic-Design Color Theory)
+   Zero interference with Dark Mode or Dark Containers inside Light Mode
    ========================================================================== */
 
 html.light body {
@@ -163,36 +163,39 @@ html.light .gradient-text {
   -webkit-text-fill-color: transparent !important;
 }
 
-/* High-Contrast Ultra-Readable Typography */
-html.light .text-white,
+/* High-Contrast Typography for Light Backgrounds */
+html.light .text-white {
+  color: #0F172A;
+}
+
 html.light .text-gray-100,
 html.light .text-gray-200 {
-  color: #0F172A !important;
+  color: #0F172A;
 }
 
 html.light .text-gray-300 {
-  color: #1E293B !important;
+  color: #1E293B;
 }
 
 html.light .text-gray-400,
 html.light .text-gray-500 {
-  color: #334155 !important;
+  color: #334155;
 }
 
 html.light .text-purple-300,
 html.light .text-purple-400,
 html.light .text-purple-200 {
-  color: #312E81 !important;
+  color: #312E81;
 }
 
 html.light .text-emerald-400,
 html.light .text-emerald-300 {
-  color: #047857 !important;
+  color: #047857;
 }
 
 html.light .text-cyan-400,
 html.light .text-cyan-300 {
-  color: #0369A1 !important;
+  color: #0369A1;
 }
 
 /* Dark Component Background Replacements */
@@ -213,7 +216,7 @@ html.light [class*="bg-[#080910]"] {
 html.light pre,
 html.light code,
 html.light [class*="font-mono"] {
-  color: #0F172A !important;
+  color: #0F172A;
 }
 
 /* Borders & Badges */
@@ -230,33 +233,76 @@ html.light [class*="bg-white/10"] {
   border-color: #E2E8F0 !important;
 }
 
-html.light [class*="bg-purple-500/10"],
-html.light [class*="bg-purple-500/20"],
-html.light [class*="bg-purple-600/20"] {
+/* Reasoning Panel Dropdown Button & Drawer in Light Mode (Screenshots 1 & 2 Fix) */
+html.light [class*="bg-purple-950/40"] {
   background-color: #EEF2FF !important;
   border-color: #C7D2FE !important;
+}
+
+html.light [class*="bg-purple-950/40"] button {
   color: #312E81 !important;
 }
 
-html.light [class*="bg-purple-950/20"],
-html.light [class*="bg-purple-900/20"],
-html.light [class*="bg-black/40"] {
+html.light [class*="bg-purple-950/40"] button * {
+  color: #312E81 !important;
+}
+
+html.light [class*="bg-purple-950/40"] button:hover {
+  background-color: #E0E7FF !important;
+}
+
+html.light [class*="bg-purple-950/40"] [class*="bg-black/50"],
+html.light [class*="bg-purple-950/40"] [class*="bg-black/40"] {
   background-color: #F8FAFC !important;
-  border-color: #CBD5E1 !important;
+  border-color: #E2E8F0 !important;
   color: #0F172A !important;
 }
 
-/* Active Persona & Primary CTA Buttons */
+html.light [class*="bg-purple-950/40"] [class*="bg-black/50"] p,
+html.light [class*="bg-purple-950/40"] [class*="bg-black/40"] p {
+  color: #1E293B !important;
+}
+
+html.light [class*="bg-purple-950/40"] [class*="bg-black/50"] svg,
+html.light [class*="bg-purple-950/40"] [class*="bg-black/40"] svg {
+  color: #4338CA !important;
+}
+
+/* Active Selected Persona Card (Dark Container inside Light Mode) - Screenshot 1 Fix */
 html.light [class*="bg-purple-900/30"] {
   background-color: #0F172A !important;
+  border-color: #8B5CF6 !important;
   color: #FFFFFF !important;
-  border-color: #0F172A !important;
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.3) !important;
 }
 
-html.light [class*="bg-purple-900/30"] * {
+html.light [class*="bg-purple-900/30"] h4,
+html.light [class*="bg-purple-900/30"] .text-white {
   color: #FFFFFF !important;
 }
 
+html.light [class*="bg-purple-900/30"] p,
+html.light [class*="bg-purple-900/30"] .text-gray-400,
+html.light [class*="bg-purple-900/30"] .text-gray-300 {
+  color: #CBD5E1 !important;
+}
+
+html.light [class*="bg-purple-900/30"] .text-purple-300,
+html.light [class*="bg-purple-900/30"] .text-purple-200 {
+  color: #E9D5FF !important;
+}
+
+html.light [class*="bg-purple-900/30"] [class*="bg-white/5"] {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+html.light [class*="bg-purple-900/30"] [class*="bg-white/5"] span,
+html.light [class*="bg-purple-900/30"] [class*="bg-white/5"] * {
+  color: #F3E8FF !important;
+}
+
+/* Active Nav Button / Pill in Light Mode - Screenshot 2 Fix */
 html.light .bg-purple-600,
 html.light [class*="bg-gradient-to-r from-purple-600"] {
   background: #0F172A !important;
@@ -265,9 +311,61 @@ html.light [class*="bg-gradient-to-r from-purple-600"] {
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15) !important;
 }
 
-html.light .bg-purple-600:hover,
-html.light [class*="bg-gradient-to-r from-purple-600"]:hover {
-  background: #1E293B !important;
+html.light .bg-purple-600 *,
+html.light [class*="bg-gradient-to-r from-purple-600"] * {
+  color: #FFFFFF !important;
+}
+
+/* Reviewer Critiques & Amber Cards in Light Mode - Screenshot 3 Fix */
+html.light [class*="bg-amber-950/20"],
+html.light [class*="bg-amber-500/10"] {
+  background-color: #FFFBEB !important;
+  border-color: #FDE68A !important;
+}
+
+html.light [class*="bg-amber-950/20"] h4,
+html.light [class*="bg-amber-950/20"] .text-amber-300,
+html.light [class*="bg-amber-950/20"] .text-amber-400 {
+  color: #B45309 !important;
+}
+
+html.light [class*="bg-amber-950/20"] li,
+html.light [class*="bg-amber-950/20"] p,
+html.light [class*="bg-amber-950/20"] .text-gray-300 {
+  color: #78350F !important;
+}
+
+/* Researcher Insights & Emerald Cards in Light Mode */
+html.light [class*="bg-purple-950/20"] {
+  background-color: #F5F3FF !important;
+  border-color: #DDD6FE !important;
+}
+
+html.light [class*="bg-purple-950/20"] h4,
+html.light [class*="bg-purple-950/20"] .text-purple-300 {
+  color: #5B21B6 !important;
+}
+
+html.light [class*="bg-purple-950/20"] li,
+html.light [class*="bg-purple-950/20"] p,
+html.light [class*="bg-purple-950/20"] .text-gray-300 {
+  color: #371B69 !important;
+}
+
+html.light [class*="bg-emerald-950/20"] {
+  background-color: #ECFDF5 !important;
+  border-color: #A7F3D0 !important;
+}
+
+html.light [class*="bg-emerald-950/20"] h4,
+html.light [class*="bg-emerald-950/20"] .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.light [class*="bg-emerald-950/20"] li,
+html.light [class*="bg-emerald-950/20"] p,
+html.light [class*="bg-emerald-950/20"] .text-gray-300 {
+  color: #064E3B !important;
 }
 
 /* Input Fields & Textareas */

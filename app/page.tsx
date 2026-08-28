@@ -137,14 +137,14 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 space-y-2 font-mono text-xs">
+            <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 space-y-2 font-mono text-xs shadow-sm">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-gray-400">Content Integrity:</span>
                 <span className="text-emerald-400 font-bold">100% Unique Ideas</span>
               </div>
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-gray-400">Duplicate Shield:</span>
-                <span className="text-cyan-400">Zero Repeated Hooks</span>
+                <span className="text-cyan-400 font-bold">Zero Repeated Hooks</span>
               </div>
             </div>
           </motion.div>
